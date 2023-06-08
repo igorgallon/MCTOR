@@ -69,7 +69,7 @@ function Offspring = OperatorGA(Problem,Parent,Parameter)
     if ~isempty(Type{5})        % Permutation variables
         Offspring(:,Type{5}) = GApermutation(Parent1(:,Type{5}),Parent2(:,Type{5}),proC);
     end
-    if ~isempty(Type{6})        % User-defined permutation method
+    if ~isempty(Type{6})        % Permutation variables
         Offspring(:,Type{6}) = GApermutationMC(Parent1(:,Type{6}),Parent2(:,Type{6}),proC);
     end
     if evaluated
