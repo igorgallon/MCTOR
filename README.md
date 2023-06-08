@@ -1,2 +1,2 @@
-# MCTRFramework
-A Framework for Tasks Routing in Many-cores Architectures
+# MCTOR Framework
+A Framework for Task Routing Optimization in Many-cores Architectures
