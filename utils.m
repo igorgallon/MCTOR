@@ -111,5 +111,43 @@ classdef utils
             utils.drawSolution(app, cromossomeSelected, minIdx);
         end
         
+        function task_obj = extractTask(x)
+            n = numel(x);
+            task_obj.n = n;
+            task_obj.id = zeros(n, 1);
+            task_obj.type = zeros(n, 1);
+            for i = 1:n
+                task_obj.id(i) = str2double(x{1,i}{1,1});
+                task_obj.type(i) = str2double(x{1,i}{1,2});
+            end
+        end
+
+        function arc_obj = extractArc(x)
+            n = numel(x);
+            arc_obj.n = n;
+            arc_obj.id = zeros(n, 1);
+            arc_obj.from = zeros(n, 1);
+            arc_obj.to = zeros(n, 1);
+            arc_obj.type = zeros(n, 1);
+            for i = 1:n
+                arc_obj.id(i) = str2double(x{1,i}{1,1});
+                arc_obj.from(i) = str2double(x{1,i}{1,2});
+                arc_obj.to(i) = str2double(x{1,i}{1,3});
+                arc_obj.type(i) = str2double(x{1,i}{1,4});
+            end
+        end
+
+        function dl_obj = extractDeadline(x)
+            n = numel(x);
+            dl_obj.n = n;
+            dl_obj.id = zeros(n, 1);
+            dl_obj.on = zeros(n, 1);
+            dl_obj.at = zeros(n, 1);
+            for i = 1:n
+                dl_obj.id(i) = str2double(x{1,i}{1,1});
+                dl_obj.on(i) = str2double(x{1,i}{1,2});
+                dl_obj.at(i) = str2double(x{1,i}{1,3});
+            end
+        end
     end
 end
