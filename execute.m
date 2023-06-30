@@ -25,7 +25,7 @@ T2 = [2 3 4 4 5 5 5 6 7 8 8 8 2 3 4 4 5 6 6 7 7 8 8 8 9 9 10 11 11 12 12 13 14 1
 W2 = [43 26 45 25 2 14 12 23 39 9 14 33 20 8 11 33 39 41 2 32 12 39 35 9 35 18 12 40 23 17 24 41 21 45 18 41 0 40 31 10 37 19 34 23 12 38 43 11 7 39 47 18 46];
 params2 = {26, 10, 10, popSize, numObj, S2, T2, W2, 6};
 
-[Dec, Obj, Con] = platemo('problem',@ManyCoreV1,'algorithm',@NSGAII,'parameter',params0,'save', 1);
+[Dec, Obj, Con] = platemo('problem',@ManyCoreV1,'algorithm',@NSGAII,'parameter',params1,'save', 1);
 % [Dec, Obj, Con] = platemo('problem',@MCTOF,'algorithm',@NSGAII,'parameter',params,'save', 1);
 % [n, s, t, w, g] = parseTGFF('D:\Projects\tgff_v3_1\examples\simple.tgff');
 % [ntasks, source, target, weight, g] = parseTGFF('D:\Projects\MCTOR\tgff\simple1.tgff');
