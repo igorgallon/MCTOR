@@ -1,8 +1,20 @@
+%% Collection of utility and helper functions used across the project
 classdef utils
+    
+    properties (Constant)
+        debugMode = true;   % Enable/disable log in the console
+    end
+    
     methods(Static)
         
-        % Collects the solution parameters (objective values and
-        % cromossome) and structure them in an array
+        %% Encapsulate the log calls
+        function [] = log(message)
+            if utils.debugMode
+                disp(message);
+            end
+        end
+
+        %% Collects the solution parameters (objective values and cromossome) and structure them in an array
         % @dec      Population of the last generation
         % @obj      Objective for each individual of the Solution
         % @con      Constraints violation
@@ -12,16 +24,16 @@ classdef utils
             x.cromossomes = dec;
         end
         
-        % Represents the cromossome solution in the processors and routers
-        % grid.
+        %% Represents the cromossome solution in the processors and routers grid
         % @app          App Designed object
         % @cromossome   The cromossome solution
-        function [] = drawSolution(app, cromossome, cromId)
+        % @cromId       The cromossome ID
+        function [coordinates] = drawSolution(app, cromossome, cromId)
             % Define proportional values to draw figures
-            hProcessor = 10;
-            wProcessor = 10;
-            hPadding = 5;
-            wPadding = 5;
+            hProcessor = 10;    % Processor figure's height
+            wProcessor = 10;    % Processor figure's width
+            hPadding = 5;       % Height padding between processors
+            wPadding = 5;       % Width padding between processors
             hLabel = 2;
             wLabel = 2;
             sizeTaskLabel = 12;
@@ -29,10 +41,7 @@ classdef utils
             
             nRows = app.numRows;
             nColumns = app.numColumns;
-            
-            % Close previous opened figure
-  
-            
+                        
             % Set up the draw area
             close;
             app.g = figure;
@@ -47,54 +56,81 @@ classdef utils
             totalWidth = nColumns*(wProcessor+wPadding);
             totalHeight = nRows*(hProcessor+hPadding);
             % Hide the axis
-            set(gca,'YDir','reverse');
+            set(gca,'YDir','normal');
             axis([0 totalWidth 0 totalHeight]);
             axis off;
             % Convert cromossom to matrix shape
             cromGrid = reshape(cromossome, nColumns, []).';
-            p_id = 1;   % Processor ID
+            
+            % Save the coordinates from each processor figure
+            coordinates(app.numTasks) = struct();
             % Draw the Processors Grid
             for i = 1:nRows
-                pos_y = (i-1)*(hProcessor+hPadding);
+                pos_y = (nRows+1-i)*(hProcessor+hPadding);
                 for j = 1:nColumns
                     pos_x = (j-1)*(wProcessor+wPadding);
                     task_id = cromGrid(i, j);
-                    x = [pos_x pos_x+hProcessor];
-                    y = [pos_y pos_y+wProcessor];
+                    x1 = pos_x;
+                    x2 = pos_x+wProcessor;
+                    y1 = pos_y;
+                    y2 = pos_y-hProcessor;
+                    cx = [x1 x2];  % Coordinates x1,x2
+                    cy = [y1 y2];  % Coordinates y1,y2
+                    p_id = ((i-1)*nColumns)+j;   % Processor ID
                     if task_id == 0
                         % Plot the Router as disabled mode
-                        image(x, y, imgInactiveNode);
+                        image(cx, cy, imgInactiveNode);
                     else
+                        coordinates(task_id).cx = cx;
+                        coordinates(task_id).cy = cy;
                         % Plot the Router in the Processors Grid
-                        image(x, y, imgActiveNode);
+                        image(cx, cy, imgActiveNode);
                         % Plot the Task ID in the middle of the Router
-                        text(pos_x+(hProcessor/2), pos_y+(wProcessor/2), num2str(task_id), 'Color', 'black', 'FontSize', sizeTaskLabel);
+                        text(x1+(wProcessor/2), y1-(hProcessor/2), num2str(task_id), 'Color', 'black', 'FontSize', sizeTaskLabel);
                     end
                     % Plot the Processor ID
-                    text(pos_x+(hProcessor/5)+0.5, pos_y+(wProcessor/5)+0.2, num2str(p_id), 'Color', 'black', 'FontSize', sizePIDLabel);
-                    p_id = p_id + 1;
+                    text(x1+(wProcessor/5)+0.5, y1-(hProcessor/5)-0.2, num2str(p_id), 'Color', 'black', 'FontSize', sizePIDLabel);
                 end
+            end
+            
+            % Draw the tasks dependencies using arrows
+            for i = 1:length(app.sourceIds)
+                s = coordinates(app.sourceIds(i));
+                t = coordinates(app.targetIds(i));
+                x = [(s.cx(1)+s.cx(2))/2 (t.cx(1)+t.cx(2))/2];
+                y = [(s.cy(1)+s.cy(2))/2 (t.cy(1)+t.cy(2))/2];
+                ha = annotation('arrow');
+                ha.Units = 'normalized';
+                ha.Parent = app.g.CurrentAxes;
+                ha.LineStyle = '--';
+                ha.HeadStyle = 'vback3';
+                ha.Color = 'red';
+                ha.X = x;
+                ha.Y = y;
             end
         end
         
+        %% Display the tip box when a point is selected by the user in the PF graph
         function txt = displaySolutionTip(~, info, app)
             x = info.Position(1);
             y = info.Position(2);
             
-            % Get the cromossome selected
+            % Get the cromossome selected based on x-y-coordinates
             x_axis = app.solution.energy;
             y_axis = app.solution.fault_tolerance;
             coordinates = [x_axis(:), y_axis(:)];
             idx = find(ismember(coordinates, [x y], 'rows'), 1);
             cromossomeSelected = app.solution.cromossomes(idx, :);
-            %disp(['[',num2str(pointSelected(1)),',',num2str(pointSelected(2)),']']);
-            % disp(['Cromossome selected: ', num2str(cromossomeSelected)]);
+            % Draw the cromossome solution
             utils.drawSolution(app, cromossomeSelected, idx);
+            % Return the tip info [#Cromossome ID (Energy, FT)]
             txt = ['#' num2str(idx) ' (' num2str(x) ', ' num2str(y) ')'];
         end
-
+        
+        %% Get the element selected by the user in the results graph
+        % based on the (x,y) mouse cursor coordinates. Once the element is
+        % found, the function draws the solution in the processors grid.
         function [] = getSelectedPoint(app, event)
-
             x_axis = app.solution.energy;
             y_axis = app.solution.fault_tolerance;
 
@@ -105,23 +141,25 @@ classdef utils
             pointSelected = coordinates(minIdx, :);
             cromossomeSelected = app.solution.cromossomes(minIdx, :);
             
-            disp(['[',num2str(pointSelected(1)),',',num2str(pointSelected(2)),']']);
-            disp(['Cromossome selected: ', num2str(cromossomeSelected)]);
+            log(['[',num2str(pointSelected(1)),',',num2str(pointSelected(2)),']']);
+            log(['Cromossome selected: ', num2str(cromossomeSelected)]);
             
             utils.drawSolution(app, cromossomeSelected, minIdx);
         end
         
+        %% Auxiliar function to extract the tasks from a TGFF file
         function task_obj = extractTask(x)
             n = numel(x);
             task_obj.n = n;
             task_obj.id = zeros(n, 1);
             task_obj.type = zeros(n, 1);
             for i = 1:n
-                task_obj.id(i) = str2double(x{1,i}{1,1});
+                task_obj.id(i) = str2double(x{1,i}{1,1}) + 1;
                 task_obj.type(i) = str2double(x{1,i}{1,2});
             end
         end
-
+        
+        %% Auxiliar function to extract the arcs from a TGG file
         function arc_obj = extractArc(x)
             n = numel(x);
             arc_obj.n = n;
@@ -130,13 +168,14 @@ classdef utils
             arc_obj.to = zeros(n, 1);
             arc_obj.type = zeros(n, 1);
             for i = 1:n
-                arc_obj.id(i) = str2double(x{1,i}{1,1});
-                arc_obj.from(i) = str2double(x{1,i}{1,2});
-                arc_obj.to(i) = str2double(x{1,i}{1,3});
+                arc_obj.id(i) = str2double(x{1,i}{1,1}) + 1;
+                arc_obj.from(i) = str2double(x{1,i}{1,2}) + 1;
+                arc_obj.to(i) = str2double(x{1,i}{1,3}) + 1;
                 arc_obj.type(i) = str2double(x{1,i}{1,4});
             end
         end
-
+        
+        %% Auxiliar function to extract the deadlines from a TGFF file
         function dl_obj = extractDeadline(x)
             n = numel(x);
             dl_obj.n = n;
@@ -144,8 +183,8 @@ classdef utils
             dl_obj.on = zeros(n, 1);
             dl_obj.at = zeros(n, 1);
             for i = 1:n
-                dl_obj.id(i) = str2double(x{1,i}{1,1});
-                dl_obj.on(i) = str2double(x{1,i}{1,2});
+                dl_obj.id(i) = str2double(x{1,i}{1,1}) + 1;
+                dl_obj.on(i) = str2double(x{1,i}{1,2}) + 1;
                 dl_obj.at(i) = str2double(x{1,i}{1,3});
             end
         end

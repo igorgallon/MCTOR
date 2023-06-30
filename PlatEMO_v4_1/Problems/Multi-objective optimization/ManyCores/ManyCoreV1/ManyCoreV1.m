@@ -4,6 +4,8 @@ classdef ManyCoreV1 < PROBLEM
 % nTask --- 5 --- Number of Tasks
 % nRow --- 3 --- Number of Image
 % nCol --- 3 --- Number of Image
+% popSize --- 100 --- Population size
+% nObj --- 2 --- Number of objectives
 % S --- 1,1,2,3,3,4 --- Arco do Grafo
 % T --- 2,3,4,4,5,5 --- Arco do Grafo
 % W --- 10,20,30,40,50,60 --- Pesos por Arco
@@ -15,8 +17,10 @@ classdef ManyCoreV1 < PROBLEM
 %--------------------------------------------------------------------------
     properties(Access = private)
         nTask = 5;	% Number of Tasks
-        nRow = 3;   %Number of Image
-        nCol = 3; %Number of Image
+        nRow = 3;   % Number of Image
+        nCol = 3;   % Number of Image
+        popSize = 100;    % Population size
+        nObj = 2;      % Number of objectives
         S = [1 1 2 3 3 4]; % Grafo
         T = [2 3 4 4 5 5]; % Grafo
         W = [10 20 30 40 50 60]; % Pesos
@@ -25,9 +29,10 @@ classdef ManyCoreV1 < PROBLEM
     methods
         %% Default settings of the problem
         function Setting(obj)
-            [obj.nTask,obj.nRow,obj.nCol,obj.S,obj.T,obj.W,obj.Enc]= obj.ParameterSet(2); 
-            if isempty(obj.M); obj.M = 2; end  %Numero de objetivos
+            [obj.nTask,obj.nRow,obj.nCol,obj.popSize,obj.nObj,obj.S,obj.T,obj.W,obj.Enc]= obj.ParameterSet(2);
             if isempty(obj.D); obj.D = obj.nRow*obj.nCol; end  %Numero de variaveis
+            obj.N = obj.popSize;    %Population size
+            obj.M = obj.nObj;       %Number of objectives
             obj.lower    = zeros(1,obj.D);
             obj.upper    = 1000*ones(1,obj.D);
             obj.encoding = obj.Enc*ones(1,obj.D);  %Tipo de operador
