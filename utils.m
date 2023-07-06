@@ -148,19 +148,21 @@ classdef utils
         end
         
         %% Auxiliar function to extract the tasks from a TGFF file
-        function task_obj = extractTask(x)
+        function task_obj = extractTask(x, time_labels)
             n = numel(x);
             task_obj.n = n;
             task_obj.id = zeros(n, 1);
             task_obj.type = zeros(n, 1);
             for i = 1:n
-                task_obj.id(i) = str2double(x{1,i}{1,1}) + 1;
-                task_obj.type(i) = str2double(x{1,i}{1,2});
+                graph_id = str2double(x{1,i}{1,1}) + 1;
+                time = time_labels{graph_id,1}.exec_time;
+                task_obj.id(i) = str2double(x{1,i}{1,2}) + 1;
+                task_obj.type(i) = time(str2double(x{1,i}{1,3}) + 1);
             end
         end
         
         %% Auxiliar function to extract the arcs from a TGG file
-        function arc_obj = extractArc(x)
+        function arc_obj = extractArc(x, time_labels)
             n = numel(x);
             arc_obj.n = n;
             arc_obj.id = zeros(n, 1);
@@ -168,10 +170,12 @@ classdef utils
             arc_obj.to = zeros(n, 1);
             arc_obj.type = zeros(n, 1);
             for i = 1:n
-                arc_obj.id(i) = str2double(x{1,i}{1,1}) + 1;
-                arc_obj.from(i) = str2double(x{1,i}{1,2}) + 1;
-                arc_obj.to(i) = str2double(x{1,i}{1,3}) + 1;
-                arc_obj.type(i) = str2double(x{1,i}{1,4});
+                graph_id = str2double(x{1,i}{1,1}) + 1;
+                time = time_labels{graph_id,1}.exec_time;
+                arc_obj.id(i) = str2double(x{1,i}{1,2}) + 1;
+                arc_obj.from(i) = str2double(x{1,i}{1,3}) + 1;
+                arc_obj.to(i) = str2double(x{1,i}{1,4}) + 1;
+                arc_obj.type(i) = time(str2double(x{1,i}{1,5}) + 1);
             end
         end
         
@@ -186,6 +190,18 @@ classdef utils
                 dl_obj.id(i) = str2double(x{1,i}{1,1}) + 1;
                 dl_obj.on(i) = str2double(x{1,i}{1,2}) + 1;
                 dl_obj.at(i) = str2double(x{1,i}{1,3});
+            end
+        end
+        
+        %% Auxiliar function to extract the time labels from a TGFF file
+        function dl_obj = extractTimeLabel(x)
+            n = numel(x);
+            dl_obj.n = n;
+            dl_obj.id = zeros(n, 1);
+            dl_obj.exec_time = zeros(n, 1);
+            for i = 1:n
+                dl_obj.id(i) = str2double(x{1,i}{1,1}) + 1;
+                dl_obj.exec_time(i) = round(str2double(x{1,i}{1,2}), 2);
             end
         end
     end
