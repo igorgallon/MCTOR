@@ -9,7 +9,7 @@ function [n, s, t, w, graphs_obj] = parseTGFF(filePath)
     patternWild = '\{(.+)\}';
     patternTask = ['TASK t(\d+)_(\d+)' patternSpace 'TYPE ' patternId];
     patternArc = ['ARC a(\d+)_(\d+)' patternSpace 'FROM ' patternTaskId patternSpace 'TO' patternSpace patternTaskId ' TYPE ' patternId];
-    patternHardDeadline = ['HARD_DEADLINE d\d+_(\d+)' patternSpace 'ON' patternSpace patternTaskId ' AT ' '(\d+)'];
+    patternHardDeadline = ['HARD_DEADLINE d(\d+)_(\d+)' patternSpace 'ON' patternSpace patternTaskId ' AT ' '(\d+)'];
     patternTimeLabel = ['@COMMUN ' patternId ' ' patternWild];
     patternLabels = [patternId patternSpace patternFloat patternSpace];
     patternTaskGraph = ['@TASK_GRAPH ' patternId ' ' patternWild];
@@ -54,14 +54,16 @@ function [n, s, t, w, graphs_obj] = parseTGFF(filePath)
     source = [];
     target = [];
     weight = [];
+    total_tasks = 0;
 
     for i=1:n_graphs
+        total_tasks = max([total_tasks graphs_obj.tasks{i,1}.n]);
         source = [source; graphs_obj.arcs{i,1}.from ];
         target = [target; graphs_obj.arcs{i,1}.to ];
         weight = [weight; graphs_obj.arcs{i,1}.type ];
     end
     
-    n = max([max(source) max(target)]);
+    n = total_tasks;
     s = source';
     t = target';
     w = weight';

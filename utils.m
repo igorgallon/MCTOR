@@ -3,6 +3,14 @@ classdef utils
     
     properties (Constant)
         debugMode = true;   % Enable/disable log in the console
+
+        custom_colormap = [
+            1  0  0; % red
+            1 .5  0; % orange
+            1  1  0; % yellow
+            0  1  0; % green
+            0  0  1; % blue
+        ];
     end
     
     methods(Static)
@@ -12,6 +20,25 @@ classdef utils
             if utils.debugMode
                 disp(message);
             end
+        end
+        %% Set virtual id for Tasks, Arcs, and Labels from TGFF files
+        % @g        Graph id
+        % @id       Real id
+        % @vid      Virtual id
+        function vid = setVirtualId(g, id)
+            % vid = (100 * g) + id;
+            vid = id;
+        end
+        
+        %% Retrive the virtual id for Tasks, Arcs, and Lavels from TGFF files
+        % @vid      Virtual id
+        % @g        Graph id
+        % @id       Real id
+        function [g, id] = getRealId(vid)
+            % g = fix(vid/100);
+            % id = rem(vid/100);
+            g = 1;
+            id = vid;
         end
 
         %% Collects the solution parameters (objective values and cromossome) and structure them in an array
@@ -156,7 +183,7 @@ classdef utils
             for i = 1:n
                 graph_id = str2double(x{1,i}{1,1}) + 1;
                 time = time_labels{graph_id,1}.exec_time;
-                task_obj.id(i) = str2double(x{1,i}{1,2}) + 1;
+                task_obj.id(i) = utils.setVirtualId(graph_id, str2double(x{1,i}{1,2}) + 1);
                 task_obj.type(i) = time(str2double(x{1,i}{1,3}) + 1);
             end
         end
@@ -172,9 +199,10 @@ classdef utils
             for i = 1:n
                 graph_id = str2double(x{1,i}{1,1}) + 1;
                 time = time_labels{graph_id,1}.exec_time;
-                arc_obj.id(i) = str2double(x{1,i}{1,2}) + 1;
-                arc_obj.from(i) = str2double(x{1,i}{1,3}) + 1;
-                arc_obj.to(i) = str2double(x{1,i}{1,4}) + 1;
+
+                arc_obj.id(i) = utils.setVirtualId(graph_id, str2double(x{1,i}{1,2}) + 1);
+                arc_obj.from(i) = utils.setVirtualId(graph_id, str2double(x{1,i}{1,3}) + 1);
+                arc_obj.to(i) = utils.setVirtualId(graph_id, str2double(x{1,i}{1,4}) + 1);
                 arc_obj.type(i) = time(str2double(x{1,i}{1,5}) + 1);
             end
         end
@@ -187,9 +215,11 @@ classdef utils
             dl_obj.on = zeros(n, 1);
             dl_obj.at = zeros(n, 1);
             for i = 1:n
-                dl_obj.id(i) = str2double(x{1,i}{1,1}) + 1;
-                dl_obj.on(i) = str2double(x{1,i}{1,2}) + 1;
-                dl_obj.at(i) = str2double(x{1,i}{1,3});
+                graph_id = str2double(x{1,i}{1,1}) + 1;
+                
+                dl_obj.id(i) = utils.setVirtualId(graph_id, str2double(x{1,i}{1,2}) + 1);
+                dl_obj.on(i) = utils.setVirtualId(graph_id, str2double(x{1,i}{1,3}) + 1);
+                dl_obj.at(i) = str2double(x{1,i}{1,4});
             end
         end
         
