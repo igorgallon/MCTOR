@@ -46,8 +46,8 @@ classdef utils
         % @obj      Objective for each individual of the Solution
         % @con      Constraints violation
         function x = structureSolution(dec, obj, con)
-            x.energy = obj(:,1);
-            x.fault_tolerance = obj(:,2);
+            x.fault_tolerance = obj(:,1);
+            x.energy = obj(:,2);
             x.cromossomes = dec;
         end
         

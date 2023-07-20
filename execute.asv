@@ -28,7 +28,7 @@ params2 = {26, 10, 10, popSize, numObj, S2, T2, W2, 6};
 % [dec, obj, con] = platemo('problem',@ManyCoreV1,'algorithm',@NSGAII,'parameter',params0,'save', 1);
 % [Dec, Obj, Con] = platemo('problem',@MCTOF,'algorithm',@NSGAII,'parameter',params,'save', 1);
 % [n, s, t, w, g] = parseTGFF('D:\Projects\tgff_v3_1\examples\simple.tgff');
-[ntasks, source, target, weight, g] = parseTGFF('D:\Projects\MCTOR\tgff\simple2.tgff');
+% [ntasks, source, target, weight, g] = parseTGFF('D:\Projects\MCTOR\tgff\simple2.tgff');
 
 % app.numTasks = 5;
 % app.numRows = 4;
@@ -42,16 +42,11 @@ params2 = {26, 10, 10, popSize, numObj, S2, T2, W2, 6};
 % 
 % coordinates = utils.drawSolution(app, cromossome, 1);
 
-% m=imread('D:\Projects\MCTOR\processor_node.png');
-% 
-% custom_colormap = [
-%     1  0  0; % red
-%     1 .5  0; % orange
-%     1  1  0; % yellow
-%     0  1  0; % green
-%     0  0  1; % blue
-% ];
-% 
-% figure, image(m); % Display the original picture 
-% colormap(custom_colormap(2));
-% image(m);
+m=imread('D:\Projects\MCTOR\processor_node.png');
+            1  0  0; % red
+            1 .5  0; % orange
+            1  1  0; % yellow
+            0  1  0; % green
+            0  0  1; % blue
+figure, image(m); % Display the original picture 
+colormap(m, []);
