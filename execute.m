@@ -3,7 +3,7 @@
 % Created by Manoel Aranda de Almeida 25/05/2023
 % to optimize Many-Core
 %--------------------------------------------------------------------------
-addpath(genpath([pwd,'\PlatEMO_v4_1']))
+addpath(genpath([pwd,'\PlatEMO']))
 
 popSize = 100;
 numObj = 1;
