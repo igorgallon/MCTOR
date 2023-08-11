@@ -66,7 +66,7 @@ classdef utils
             x.energy = obj(:,1);
             x.fault_tolerance = obj(:,2);
             x.chromosomes = dec;
-            x.best = getBestSolution(dec, obj);
+            x.best = utils.getBestSolution(dec, obj);
         end
         
         %% Collect statistics from batch results
@@ -102,6 +102,66 @@ classdef utils
         % @chromosome   The chromosome solution
         % @cromId       The chromosome ID
         function [coordinates] = drawSolution(app, chromosome, cromId)
+            % Define proportional values to draw figures
+            hProcessor = 10;    % Processor figure's height
+            wProcessor = 10;    % Processor figure's width
+            hPadding = 2;       % Height padding between processors
+            wPadding = 2;       % Width padding between processors
+            hLabel = 2;
+            wLabel = 2;
+            sizeTaskLabel = 12;
+            sizePIDLabel = 8;
+            
+            nRows = app.numRows;
+            nColumns = app.numColumns;
+                        
+            % Set up the draw area
+            close;
+            app.g = figure('WindowState', 'maximized');
+            set(app.g, 'MenuBar', 'none');
+            set(app.g, 'ToolBar', 'none');
+            set(app.g, 'NumberTitle', 'off', 'Name', ['Solution ', num2str(cromId)]);
+            hold on;
+            % Determine the draw area in the graphic
+            totalWidth = nColumns*(wProcessor+wPadding);
+            totalHeight = nRows*(hProcessor+hPadding);
+            % Hide the axis
+            set(gca,'YDir','normal');
+            axis([0 totalWidth 0 totalHeight]);
+            axis off;
+        
+            % Save the coordinates from each processor figure
+            p_coord = cell(nRows, nColumns);
+        
+            grid = zeros(nRows*nColumns, app.numTasks);
+            
+            for i=1:app.numTasks
+                if ismember(i, chromosome)
+                    pid = find(chromosome== i);
+                    grid(i,1:length(pid)) = pid;
+                end
+            end
+        
+            % Draw the Processors Grid
+            for i = 1:nRows
+                pos_y = (nRows-i)*(hProcessor+hPadding);
+                for j = 1:nColumns
+                    pos_x = (j-1)*(wProcessor+wPadding);
+                    pid_x = pos_x;
+                    pid_y = pos_y+hProcessor-1;
+                    p_id = ((i-1)*nColumns)+j;   % Processor ID
+                    % p_coord{i,j} = [pos_x];
+                    % Draw processor
+                    rectangle('Position', [pos_x pos_y wProcessor hProcessor], 'FaceColor', 'none', 'Curvature', 0.1);
+                    % Plot the Processor ID
+                    text(pid_x, pid_y, num2str(p_id), 'Color', 'black', 'FontSize', sizePIDLabel);
+                    % Plot the tasks ids
+                    text(pos_x + wProcessor/2, pos_y + hProcessor/2, num2str(nonzeros(grid(p_id,:))), 'HorizontalAlignment', 'center');
+                end
+            end
+        end
+        
+        function [coordinates] = drawSolutionDeprecated(app, chromosome, cromId)
             % Define proportional values to draw figures
             hProcessor = 10;    % Processor figure's height
             wProcessor = 10;    % Processor figure's width
