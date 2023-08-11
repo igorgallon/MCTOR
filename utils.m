@@ -2,6 +2,7 @@
 classdef utils
     
     properties (Constant)
+        
         debugMode = true;   % Enable/disable log in the console
 
         custom_colormap = [
@@ -21,6 +22,7 @@ classdef utils
                 disp(message);
             end
         end
+
         %% Set virtual id for Tasks, Arcs, and Labels from TGFF files
         % @g        Graph id
         % @id       Real id
@@ -30,7 +32,7 @@ classdef utils
             vid = id;
         end
         
-        %% Retrive the virtual id for Tasks, Arcs, and Lavels from TGFF files
+        %% Retrive the virtual id for Tasks, Arcs, and Labels from TGFF file
         % @vid      Virtual id
         % @g        Graph id
         % @id       Real id
@@ -41,21 +43,65 @@ classdef utils
             id = vid;
         end
 
-        %% Collects the solution parameters (objective values and cromossome) and structure them in an array
+        %% Find the best solution by finding the shortest distance
+        % between the pair (x,y) and the PF origin (0,0)
+        function b = getBestSolution(dec, obj)
+            x = obj;
+            y = zeros(height(obj), 2);
+            % Calculate the euclidean distance
+            d = pdist2(x, y, 'fasteuclidean');
+            % Find the shortest distance
+            [~, idx] = min(d(:,1));
+            % Save the best solution
+            b.best_result = obj(idx,:);
+            b.best_solution = dec(idx,:);
+        end
+
+        %% Collects the solution parameters (objective values and chromosome) and 
+        % structure them in an array
         % @dec      Population of the last generation
         % @obj      Objective for each individual of the Solution
         % @con      Constraints violation
-        function x = structureSolution(dec, obj, con)
-            x.fault_tolerance = obj(:,1);
-            x.energy = obj(:,2);
-            x.cromossomes = dec;
+        function x = structureSolution(dec, obj)
+            x.energy = obj(:,1);
+            x.fault_tolerance = obj(:,2);
+            x.chromosomes = dec;
+            x.best = getBestSolution(dec, obj);
         end
         
-        %% Represents the cromossome solution in the processors and routers grid
-        % @app          App Designed object
-        % @cromossome   The cromossome solution
-        % @cromId       The cromossome ID
-        function [coordinates] = drawSolution(app, cromossome, cromId)
+        %% Collect statistics from batch results
+        function [mean_1, std_1, mean_2, std_2] = getStatistics(results)
+            mean_1 = mean(results(:,1));
+            std_1 = std(results(:,1));
+            mean_2 = mean(results(:,2));
+            std_2 = std(results(:,2));
+        end
+
+        %% Retrieve the encoding value according to the selected option in DropDown
+        function encoding = getEncodingDropDown(option)
+            switch option
+                case '1.Real'
+                    encoding = 1;
+                case '2.Integer'
+                    encoding = 2;
+                case '3.Label'
+                    encoding = 3;
+                case '4.Binary'
+                    encoding = 4;
+                case '5.Permutation'
+                    encoding = 5;
+                case '6.User-defined 1'
+                    encoding = 6;
+                case '6.User-defined 2'
+                    encoding = 7;
+            end
+        end
+
+        %% Represents the chromosome solution in the processors and routers grid
+        % @app          App Design object
+        % @chromosome   The chromosome solution
+        % @cromId       The chromosome ID
+        function [coordinates] = drawSolution(app, chromosome, cromId)
             % Define proportional values to draw figures
             hProcessor = 10;    % Processor figure's height
             wProcessor = 10;    % Processor figure's width
@@ -87,7 +133,7 @@ classdef utils
             axis([0 totalWidth 0 totalHeight]);
             axis off;
             % Convert cromossom to matrix shape
-            cromGrid = reshape(cromossome, nColumns, []).';
+            cromGrid = reshape(chromosome, nColumns, []).';
             
             % Save the coordinates from each processor figure
             coordinates(app.numTasks) = struct();
@@ -138,42 +184,26 @@ classdef utils
         end
         
         %% Display the tip box when a point is selected by the user in the PF graph
+        % based on the (x,y) mouse cursor coordinates. Once the element is
+        % found, the function draws the solution in the processors grid.
         function txt = displaySolutionTip(~, info, app)
             x = info.Position(1);
             y = info.Position(2);
             
-            % Get the cromossome selected based on x-y-coordinates
+            % Get the chromosome selected based on x-y-coordinates
             x_axis = app.solution.energy;
             y_axis = app.solution.fault_tolerance;
             coordinates = [x_axis(:), y_axis(:)];
             idx = find(ismember(coordinates, [x y], 'rows'), 1);
-            cromossomeSelected = app.solution.cromossomes(idx, :);
-            % Draw the cromossome solution
-            utils.drawSolution(app, cromossomeSelected, idx);
-            % Return the tip info [#Cromossome ID (Energy, FT)]
+            chromosomeSelected = app.solution.chromosomes(idx, :);
+            
+            % Draw the chromosome solution
+            utils.drawSolution(app, chromosomeSelected, idx);
+            
+            % Return the tip info [#Chromosome ID (Energy, FT)]
             txt = ['#' num2str(idx) ' (' num2str(x) ', ' num2str(y) ')'];
         end
-        
-        %% Get the element selected by the user in the results graph
-        % based on the (x,y) mouse cursor coordinates. Once the element is
-        % found, the function draws the solution in the processors grid.
-        function [] = getSelectedPoint(app, event)
-            x_axis = app.solution.energy;
-            y_axis = app.solution.fault_tolerance;
-
-            pt = event.IntersectionPoint(1:2);
-            coordinates = [x_axis(:), y_axis(:)];
-            dist = pdist2(pt, coordinates);
-            [~, minIdx] = min(dist);
-            pointSelected = coordinates(minIdx, :);
-            cromossomeSelected = app.solution.cromossomes(minIdx, :);
-            
-            log(['[',num2str(pointSelected(1)),',',num2str(pointSelected(2)),']']);
-            log(['Cromossome selected: ', num2str(cromossomeSelected)]);
-            
-            utils.drawSolution(app, cromossomeSelected, minIdx);
-        end
-        
+                
         %% Auxiliar function to extract the tasks from a TGFF file
         function task_obj = extractTask(x, time_labels)
             n = numel(x);
@@ -232,6 +262,90 @@ classdef utils
             for i = 1:n
                 dl_obj.id(i) = str2double(x{1,i}{1,1}) + 1;
                 dl_obj.exec_time(i) = round(str2double(x{1,i}{1,2}), 2);
+            end
+        end
+
+        %% Initialize and fill up the table with initial information
+        function paramObj = initializeTable(app, tableObj)
+            addpath(genpath([pwd,'\thirdparty']))
+
+            % Retrieve parameters
+            nEnc = app.encodingBatch;
+            grid = app.gridSizeBatch;
+            pop = app.popSizeBatch;
+            mr = app.mutationRateBatch;
+            alg = app.algorithmsBatch;
+            
+            % For each combination the platemo will be called @nExec times
+            nExec = app.numExecutions;
+            
+            % Retrieve the cartesian product between the parameters
+            cp = cartprod(pop, mr, 1:height(alg), 1:height(grid));
+            
+            % Get the total number of combinations
+            n = height(cp);
+            
+            paramObj.n = n;
+            paramObj.r = zeros(n,1);
+            paramObj.c = zeros(n,1);
+            paramObj.pop = zeros(n,1);
+            paramObj.mr = zeros(n,1);
+            paramObj.alg = cell(n,1);
+            
+            % Set up Table
+            tableObj.ColumnName = {'Grid'; 'Pop.Size'; 'Mut.Rt.'; 'Enc'; 'Algorithm'; 'Status'; 'Energy(Avg/Std)'; 'LoadBal.(Avg/Std)'};
+            numCols = 8;
+            tableObj.ColumnFormat = {'char'};
+            tableObj.RowName = 'numbered';
+
+            % Initialize Table content
+            tableObj.Data = strings([n,numCols]);
+            
+            % Fill up the Table with initial information
+            for i = 1:n
+                paramObj.r(i) = grid(cp(i,4),1);
+                paramObj.c(i) = grid(cp(i,4),2);
+                paramObj.pop(i) = cp(i,1);
+                paramObj.mr(i) = cp(i,2);
+                paramObj.alg{i,1} = alg{cp(i,3),1};
+                sGrid = strcat(num2str(paramObj.r(i)),"x",num2str(paramObj.c(i)));
+                energy_avg = "0.0/0.0";
+                loadbal_avg = "0.0/0.0";
+                tableObj.Data(i,:) = [sGrid, num2str(paramObj.pop(i)), num2str(paramObj.mr(i)), num2str(nEnc), paramObj.alg{i,1}, strcat("0/",num2str(nExec)), energy_avg, loadbal_avg];
+            end
+        end
+        
+        %% Update a field from the UITable
+        % @table        UITable object
+        % @i            Row index to be updated
+        % @field        Field name of the row @i
+        % @val          The new value to update
+        function [] = updateTableByField(table, i, field, val)
+            switch field
+                case 'grid'
+                    idx = 1;
+                case 'pop'
+                    idx = 2;
+                case 'mr'
+                    idx = 3;
+                case 'alg'
+                    idx = 4;
+                case 'enc'
+                    idx = 5;
+                case 'status'
+                    idx = 6;
+                case 'e'
+                    idx = 7;
+                case 'lb'
+                    idx = 8;
+                otherwise
+                    idx = 0;
+            end
+
+            if idx > 0
+                table.Data(i,idx) = val;
+            else
+                log(['WARNING! Index ' field ' not found in the UITable']);
             end
         end
     end
