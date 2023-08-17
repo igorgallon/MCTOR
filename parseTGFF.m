@@ -1,4 +1,4 @@
-function [n, s, t, w, graphs_obj] = parseTGFF(filePath)
+function [n, s, t, w, nt] = parseTGFF(filePath)
     
     rawFile = extractFileText(filePath);
 
@@ -54,11 +54,11 @@ function [n, s, t, w, graphs_obj] = parseTGFF(filePath)
     source = [];
     target = [];
     weight = [];
-    num_arcs = zeros(n_graphs,1);
+    num_tasks = zeros(n_graphs,1);
     total_tasks = 0;
     
     for i=1:n_graphs
-        num_arcs(i) = graphs_obj.arcs{i,1}.n;
+        num_tasks(i) = graphs_obj.tasks{i,1}.n;
         source = [source; graphs_obj.arcs{i,1}.from + total_tasks ];
         target = [target; graphs_obj.arcs{i,1}.to + total_tasks];
         weight = [weight; graphs_obj.arcs{i,1}.type ];
@@ -66,9 +66,8 @@ function [n, s, t, w, graphs_obj] = parseTGFF(filePath)
     end
     
     n = total_tasks;
-    a = num_arcs;
     s = source';
     t = target';
     w = weight';
-
+    nt = num_tasks';
 end

@@ -1,17 +1,8 @@
 %% Collection of utility and helper functions used across the project
 classdef utils
     
-    properties (Constant)
-        
+    properties (Constant)        
         debugMode = true;   % Enable/disable log in the console
-
-        custom_colormap = [
-            1  0  0; % red
-            1 .5  0; % orange
-            1  1  0; % yellow
-            0  1  0; % green
-            0  0  1; % blue
-        ];
     end
     
     methods(Static)
@@ -96,6 +87,33 @@ classdef utils
                     encoding = 7;
             end
         end
+        
+        %% Retrieve the Application Id based on the task id and the number of tasks
+        % for each application
+        function idx = getAppId(tid, tasks)
+            lastId = 1;
+            idx = 0;
+            for i=1:length(tasks)
+                if tid >= lastId && tid < tasks(i) + lastId
+                    idx = i;
+                    break;
+                end
+                lastId = lastId + tasks(i);
+            end
+        end
+
+        %% Construct a TEX string colorizing each work from @set with a color
+        % in @colors
+        function str = colorizeText(set, colors)
+            str = [];
+            elementsPerLine = 2;
+            for i=1:length(set)
+                str = strcat(str,' \color[rgb]{',num2str(colors(i,:)),'}',num2str(set(i)),' ');
+                if rem(i,elementsPerLine) == 0
+                    str = strcat(str, '\newline');
+                end
+            end
+        end
 
         %% Represents the chromosome solution in the processors and routers grid
         % @app          App Design object
@@ -114,7 +132,9 @@ classdef utils
             
             nRows = app.numRows;
             nColumns = app.numColumns;
-                        
+            
+            n = sum(app.numTasks);
+
             % Set up the draw area
             close;
             app.g = figure('WindowState', 'maximized');
@@ -130,18 +150,18 @@ classdef utils
             axis([0 totalWidth 0 totalHeight]);
             axis off;
         
-            % Save the coordinates from each processor figure
-            p_coord = cell(nRows, nColumns);
-        
-            grid = zeros(nRows*nColumns, app.numTasks);
-            
+            % Set a color map
+            plotColors = jet(length(app.numTasks));
+
+            % Save the task ids for each processor element
+            tasks = zeros(nRows*nColumns, n);       
             for i=1:app.numTasks
                 if ismember(i, chromosome)
-                    pid = find(chromosome== i);
-                    grid(i,1:length(pid)) = pid;
+                    pid = find(chromosome == i);
+                    tasks(i,1:length(pid)) = pid;
                 end
             end
-        
+
             % Draw the Processors Grid
             for i = 1:nRows
                 pos_y = (nRows-i)*(hProcessor+hPadding);
@@ -156,7 +176,13 @@ classdef utils
                     % Plot the Processor ID
                     text(pid_x, pid_y, num2str(p_id), 'Color', 'black', 'FontSize', sizePIDLabel);
                     % Plot the tasks ids
-                    text(pos_x + wProcessor/2, pos_y + hProcessor/2, num2str(nonzeros(grid(p_id,:))), 'HorizontalAlignment', 'center');
+                    taskIds = nonzeros(tasks(p_id,:));
+                    if ~isempty(taskIds)
+                        appIds = arrayfun(@(x) utils.getAppId(x, app.numTasks), taskIds);
+                        colors = plotColors(appIds,:);
+                        t = utils.colorizeText(taskIds, colors);
+                        text(pos_x + wProcessor/2,pos_y + hProcessor/2,t,'VerticalAlignment','middle','HorizontalAlignment','center');
+                    end
                 end
             end
         end
