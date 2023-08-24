@@ -1,4 +1,4 @@
-tg_cnt 10
+tg_cnt 1
 task_cnt 20 5
 task_degree 3 2
 period_laxity 1
@@ -10,4 +10,4 @@ table_cnt 3
 table_attrib price 80 20
 type_attrib exec_time 50 20
 trans_write
-
+eps_write

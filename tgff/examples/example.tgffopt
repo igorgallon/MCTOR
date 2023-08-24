@@ -1,0 +1,11 @@
+tg_cnt 5
+task_cnt 5 1
+task_degree 4 2
+period_mul 1, 1
+tg_write
+
+table_label COMMUN
+table_cnt 5
+type_attrib exec_time 50 20
+trans_write
+

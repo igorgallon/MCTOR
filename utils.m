@@ -289,68 +289,7 @@ classdef utils
             % Return the tip info [#Chromosome ID (Energy, FT)]
             txt = ['#' num2str(idx) ' (' num2str(x) ', ' num2str(y) ')'];
         end
-                
-        %% Auxiliar function to extract the tasks from a TGFF file
-        function task_obj = extractTask(x, time_labels)
-            n = numel(x);
-            task_obj.n = n;
-            task_obj.id = zeros(n, 1);
-            task_obj.type = zeros(n, 1);
-            for i = 1:n
-                graph_id = str2double(x{1,i}{1,1}) + 1;
-                time = time_labels{graph_id,1}.exec_time;
-                task_obj.id(i) = utils.setVirtualId(graph_id, str2double(x{1,i}{1,2}) + 1);
-                task_obj.type(i) = time(str2double(x{1,i}{1,3}) + 1);
-            end
-        end
         
-        %% Auxiliar function to extract the arcs from a TGG file
-        function arc_obj = extractArc(x, time_labels)
-            n = numel(x);
-            arc_obj.n = n;
-            arc_obj.id = zeros(n, 1);
-            arc_obj.from = zeros(n, 1);
-            arc_obj.to = zeros(n, 1);
-            arc_obj.type = zeros(n, 1);
-            for i = 1:n
-                graph_id = str2double(x{1,i}{1,1}) + 1;
-                time = time_labels{graph_id,1}.exec_time;
-
-                arc_obj.id(i) = utils.setVirtualId(graph_id, str2double(x{1,i}{1,2}) + 1);
-                arc_obj.from(i) = utils.setVirtualId(graph_id, str2double(x{1,i}{1,3}) + 1);
-                arc_obj.to(i) = utils.setVirtualId(graph_id, str2double(x{1,i}{1,4}) + 1);
-                arc_obj.type(i) = time(str2double(x{1,i}{1,5}) + 1);
-            end
-        end
-        
-        %% Auxiliar function to extract the deadlines from a TGFF file
-        function dl_obj = extractDeadline(x)
-            n = numel(x);
-            dl_obj.n = n;
-            dl_obj.id = zeros(n, 1);
-            dl_obj.on = zeros(n, 1);
-            dl_obj.at = zeros(n, 1);
-            for i = 1:n
-                graph_id = str2double(x{1,i}{1,1}) + 1;
-                
-                dl_obj.id(i) = utils.setVirtualId(graph_id, str2double(x{1,i}{1,2}) + 1);
-                dl_obj.on(i) = utils.setVirtualId(graph_id, str2double(x{1,i}{1,3}) + 1);
-                dl_obj.at(i) = str2double(x{1,i}{1,4});
-            end
-        end
-        
-        %% Auxiliar function to extract the time labels from a TGFF file
-        function dl_obj = extractTimeLabel(x)
-            n = numel(x);
-            dl_obj.n = n;
-            dl_obj.id = zeros(n, 1);
-            dl_obj.exec_time = zeros(n, 1);
-            for i = 1:n
-                dl_obj.id(i) = str2double(x{1,i}{1,1}) + 1;
-                dl_obj.exec_time(i) = round(str2double(x{1,i}{1,2}), 2);
-            end
-        end
-
         %% Initialize and fill up the table with initial information
         function paramObj = initializeTable(app, tableObj)
             addpath(genpath([pwd,'\thirdparty']))
