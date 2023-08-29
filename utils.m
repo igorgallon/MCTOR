@@ -40,7 +40,7 @@ classdef utils
             x = obj;
             y = zeros(height(obj), 2);
             % Calculate the euclidean distance
-            d = pdist2(x, y, 'euclidian');
+            d = pdist2(x, y);
             % Find the shortest distance
             [~, idx] = min(d(:,1));
             % Save the best solution
