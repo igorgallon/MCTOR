@@ -2,7 +2,23 @@
 classdef utils
     
     properties (Constant)        
-        debugMode = true;   % Enable/disable log in the console
+        %% Enable/disable log in the console
+        debugMode = true;
+
+        %% Chromosome solution displayer constants
+        elementsPerLine = 3;
+        % Define proportional values to draw figures
+        hProcessor = 10;    % Processor figure's height
+        wProcessor = 10;    % Processor figure's width
+        hPadding = 2;       % Height padding between processors
+        wPadding = 2;       % Width padding between processors
+        hLabel = 2;
+        wLabel = 2;
+        taskFontSize = 12;
+        pidFontSize = 8;
+        pRectangleCurve = 0.1;
+        taskFontWeight = 'bold';
+        figureBackgroundColor = [0.69, 0.69, 0.69];
     end
     
     methods(Static)
@@ -106,10 +122,9 @@ classdef utils
         % in @colors
         function str = colorizeText(set, colors)
             str = [];
-            elementsPerLine = 2;
             for i=1:length(set)
                 str = strcat(str,' \color[rgb]{',num2str(colors(i,:)),'}',num2str(set(i)),' ');
-                if rem(i,elementsPerLine) == 0
+                if rem(i,utils.elementsPerLine) == 0
                     str = strcat(str, '\newline');
                 end
             end
@@ -119,32 +134,21 @@ classdef utils
         % @app          App Design object
         % @chromosome   The chromosome solution
         % @cromId       The chromosome ID
-        function [coordinates] = drawSolution(app, chromosome, cromId)
-            % Define proportional values to draw figures
-            hProcessor = 10;    % Processor figure's height
-            wProcessor = 10;    % Processor figure's width
-            hPadding = 2;       % Height padding between processors
-            wPadding = 2;       % Width padding between processors
-            hLabel = 2;
-            wLabel = 2;
-            sizeTaskLabel = 12;
-            sizePIDLabel = 8;
-            
+        function [] = drawSolution(app, chromosome, cromId)
+
             nRows = app.numRows;
             nColumns = app.numColumns;
             
-            n = sum(app.numTasks);
-
             % Set up the draw area
             close;
-            app.g = figure('WindowState', 'maximized');
+            app.g = figure('WindowState', 'maximized', 'Color', utils.figureBackgroundColor);
             set(app.g, 'MenuBar', 'none');
             set(app.g, 'ToolBar', 'none');
             set(app.g, 'NumberTitle', 'off', 'Name', ['Solution ', num2str(cromId)]);
             hold on;
             % Determine the draw area in the graphic
-            totalWidth = nColumns*(wProcessor+wPadding);
-            totalHeight = nRows*(hProcessor+hPadding);
+            totalWidth = nColumns*(utils.wProcessor+utils.wPadding);
+            totalHeight = nRows*(utils.hProcessor+utils.hPadding);
             % Hide the axis
             set(gca,'YDir','normal');
             axis([0 totalWidth 0 totalHeight]);
@@ -154,8 +158,10 @@ classdef utils
             plotColors = jet(length(app.numTasks));
 
             % Save the task ids for each processor element
-            tasks = zeros(nRows*nColumns, n);       
-            for i=1:app.numTasks
+            nTasks = sum(app.numTasks);
+            cromLen = length(chromosome);
+            tasks = zeros(nRows*nColumns, nTasks);       
+            for i=1:cromLen
                 if ismember(i, chromosome)
                     pid = find(chromosome == i);
                     tasks(i,1:length(pid)) = pid;
@@ -164,40 +170,31 @@ classdef utils
 
             % Draw the Processors Grid
             for i = 1:nRows
-                pos_y = (nRows-i)*(hProcessor+hPadding);
+                pos_y = (nRows-i)*(utils.hProcessor+utils.hPadding);
                 for j = 1:nColumns
-                    pos_x = (j-1)*(wProcessor+wPadding);
+                    pos_x = (j-1)*(utils.wProcessor+utils.wPadding);
                     pid_x = pos_x;
-                    pid_y = pos_y+hProcessor-1;
+                    pid_y = pos_y+utils.hProcessor-1;
                     p_id = ((i-1)*nColumns)+j;   % Processor ID
                     % p_coord{i,j} = [pos_x];
                     % Draw processor
-                    rectangle('Position', [pos_x pos_y wProcessor hProcessor], 'FaceColor', 'none', 'Curvature', 0.1);
+                    rectangle('Position', [pos_x pos_y utils.wProcessor utils.hProcessor], 'FaceColor', 'none', 'Curvature', utils.pRectangleCurve);
                     % Plot the Processor ID
-                    text(pid_x, pid_y, num2str(p_id), 'Color', 'black', 'FontSize', sizePIDLabel);
+                    text(pid_x, pid_y, num2str(p_id), 'Color', 'black', 'FontSize', utils.pidFontSize);
                     % Plot the tasks ids
                     taskIds = nonzeros(tasks(p_id,:));
                     if ~isempty(taskIds)
                         appIds = arrayfun(@(x) utils.getAppId(x, app.numTasks), taskIds);
                         colors = plotColors(appIds,:);
                         t = utils.colorizeText(taskIds, colors);
-                        text(pos_x + wProcessor/2,pos_y + hProcessor/2,t,'VerticalAlignment','middle','HorizontalAlignment','center');
+                        text(pos_x + utils.wProcessor/2,pos_y + utils.hProcessor/2,t,'VerticalAlignment','middle','HorizontalAlignment','center','FontSize',utils.taskFontSize,'FontWeight',utils.taskFontWeight);
                     end
                 end
             end
         end
         
         function [coordinates] = drawSolutionDeprecated(app, chromosome, cromId)
-            % Define proportional values to draw figures
-            hProcessor = 10;    % Processor figure's height
-            wProcessor = 10;    % Processor figure's width
-            hPadding = 5;       % Height padding between processors
-            wPadding = 5;       % Width padding between processors
-            hLabel = 2;
-            wLabel = 2;
-            sizeTaskLabel = 12;
-            sizePIDLabel = 8;
-            
+
             nRows = app.numRows;
             nColumns = app.numColumns;
                         
@@ -212,8 +209,8 @@ classdef utils
             imgActiveNode = imread('active_node.png', 'png');
             imgInactiveNode = imread('inactive_node.png', 'png');
             % Determine the draw area in the graphic
-            totalWidth = nColumns*(wProcessor+wPadding);
-            totalHeight = nRows*(hProcessor+hPadding);
+            totalWidth = nColumns*(utils.wProcessor+utils.wPadding);
+            totalHeight = nRows*(utils.hProcessor+utils.hPadding);
             % Hide the axis
             set(gca,'YDir','normal');
             axis([0 totalWidth 0 totalHeight]);
@@ -225,14 +222,14 @@ classdef utils
             coordinates(app.numTasks) = struct();
             % Draw the Processors Grid
             for i = 1:nRows
-                pos_y = (nRows+1-i)*(hProcessor+hPadding);
+                pos_y = (nRows+1-i)*(utils.hProcessor+utils.hPadding);
                 for j = 1:nColumns
-                    pos_x = (j-1)*(wProcessor+wPadding);
+                    pos_x = (j-1)*(utils.wProcessor+utils.wPadding);
                     task_id = cromGrid(i, j);
                     x1 = pos_x;
-                    x2 = pos_x+wProcessor;
+                    x2 = pos_x+utils.wProcessor;
                     y1 = pos_y;
-                    y2 = pos_y-hProcessor;
+                    y2 = pos_y-utils.hProcessor;
                     cx = [x1 x2];  % Coordinates x1,x2
                     cy = [y1 y2];  % Coordinates y1,y2
                     p_id = ((i-1)*nColumns)+j;   % Processor ID
@@ -245,10 +242,10 @@ classdef utils
                         % Plot the Router in the Processors Grid
                         image(cx, cy, imgActiveNode);
                         % Plot the Task ID in the middle of the Router
-                        text(x1+(wProcessor/2), y1-(hProcessor/2), num2str(task_id), 'Color', 'black', 'FontSize', sizeTaskLabel);
+                        text(x1+(utils.wProcessor/2), y1-(utils.hProcessor/2), num2str(task_id), 'Color', 'black', 'FontSize', utils.taskFontSize);
                     end
                     % Plot the Processor ID
-                    text(x1+(wProcessor/5)+0.5, y1-(hProcessor/5)-0.2, num2str(p_id), 'Color', 'black', 'FontSize', sizePIDLabel);
+                    text(x1+(utils.wProcessor/5)+0.5, y1-(utils.hProcessor/5)-0.2, num2str(p_id), 'Color', 'black', 'FontSize', utils.pidFontSize);
                 end
             end
             
