@@ -50,8 +50,8 @@ classdef utils
             id = vid;
         end
 
-        %% Find the best solution by finding the shortest distance
-        % between the pair (x,y) and the PF origin (0,0)
+        %% Find the best solution by finding the shortest euclidian distance
+        % between the pair (x,y) and the Pareto-Front origin (0,0)
         function b = getBestSolution(dec, obj)
             x = obj;
             y = zeros(height(obj), 2);
@@ -60,12 +60,13 @@ classdef utils
             % Find the shortest distance
             [~, idx] = min(d(:,1));
             % Save the best solution
+            b.index = idx;
             b.best_result = obj(idx,:);
             b.best_solution = dec(idx,:);
         end
 
         %% Collects the solution parameters (objective values and chromosome) and 
-        % structure them in an array
+        % structure them in an object
         % @dec      Population of the last generation
         % @obj      Objective for each individual of the Solution
         % @con      Constraints violation
@@ -159,9 +160,9 @@ classdef utils
 
             % Save the task ids for each processor element
             nTasks = sum(app.numTasks);
-            cromLen = length(chromosome);
-            tasks = zeros(nRows*nColumns, nTasks);       
-            for i=1:cromLen
+            chromLen = length(chromosome);
+            tasks = zeros(chromLen, nTasks);
+            for i=1:chromLen
                 if ismember(i, chromosome)
                     pid = find(chromosome == i);
                     tasks(i,1:length(pid)) = pid;
