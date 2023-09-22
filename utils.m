@@ -135,18 +135,23 @@ classdef utils
         % @app          App Design object
         % @chromosome   The chromosome solution
         % @cromId       The chromosome ID
-        function [] = drawSolution(app, chromosome, cromId)
+        function [] = drawSolution(graph, nRows, nColumns, numTasks, chromosome, cromId, standaloneMode)
 
-            nRows = app.numRows;
-            nColumns = app.numColumns;
-            
             % Set up the draw area
-            close;
-            app.g = figure('WindowState', 'maximized', 'Color', utils.figureBackgroundColor);
-            set(app.g, 'MenuBar', 'none');
-            set(app.g, 'ToolBar', 'none');
-            set(app.g, 'NumberTitle', 'off', 'Name', ['Solution ', num2str(cromId)]);
+            if standaloneMode
+                f = figure('WindowState', 'maximized', 'Color', utils.figureBackgroundColor);
+                set(f, 'MenuBar', 'none');
+                set(f, 'ToolBar', 'none');
+                set(f, 'NumberTitle', 'off', 'Name', ['Solution ', num2str(cromId)]);
+            else
+                close;
+                graph = figure('WindowState', 'maximized', 'Color', utils.figureBackgroundColor);
+                set(graph, 'MenuBar', 'none');
+                set(graph, 'ToolBar', 'none');
+                set(graph, 'NumberTitle', 'off', 'Name', ['Solution ', num2str(cromId)]);
+            end
             hold on;
+
             % Determine the draw area in the graphic
             totalWidth = nColumns*(utils.wProcessor+utils.wPadding);
             totalHeight = nRows*(utils.hProcessor+utils.hPadding);
@@ -156,13 +161,13 @@ classdef utils
             axis off;
         
             % Set a color map
-            plotColors = jet(length(app.numTasks));
+            plotColors = jet(length(numTasks));
 
             % Save the task ids for each processor element
-            nTasks = sum(app.numTasks);
-            chromLen = length(chromosome);
-            tasks = zeros(chromLen, nTasks);
-            for i=1:chromLen
+            nProc = nRows*nColumns;
+            nTasks = sum(numTasks);
+            tasks = zeros(nProc, nTasks);
+            for i=1:nProc
                 if ismember(i, chromosome)
                     pid = find(chromosome == i);
                     tasks(i,1:length(pid)) = pid;
@@ -185,7 +190,7 @@ classdef utils
                     % Plot the tasks ids
                     taskIds = nonzeros(tasks(p_id,:));
                     if ~isempty(taskIds)
-                        appIds = arrayfun(@(x) utils.getAppId(x, app.numTasks), taskIds);
+                        appIds = arrayfun(@(x) utils.getAppId(x, numTasks), taskIds);
                         colors = plotColors(appIds,:);
                         t = utils.colorizeText(taskIds, colors);
                         text(pos_x + utils.wProcessor/2,pos_y + utils.hProcessor/2,t,'VerticalAlignment','middle','HorizontalAlignment','center','FontSize',utils.taskFontSize,'FontWeight',utils.taskFontWeight);
@@ -281,8 +286,12 @@ classdef utils
             idx = find(ismember(coordinates, [x y], 'rows'), 1);
             chromosomeSelected = app.solution.chromosomes(idx, :);
             
+            g = app.g;
+            r = app.numRows;
+            c = app.numColumns;
+            t = app.numTasks;
             % Draw the chromosome solution
-            utils.drawSolution(app, chromosomeSelected, idx);
+            utils.drawSolution(g, r, c, t, chromosomeSelected, idx, false);
             
             % Return the tip info [#Chromosome ID (Energy, FT)]
             txt = ['#' num2str(idx) ' (' num2str(x) ', ' num2str(y) ')'];
@@ -316,9 +325,10 @@ classdef utils
             paramObj.alg = cell(n,1);
             
             % Set up Table
-            tableObj.ColumnName = {'Grid'; 'Pop.Size'; 'Mut.Rt.'; 'Enc'; 'Algorithm'; 'Status'; 'Energy(Avg/Std)'; 'LoadBal.(Avg/Std)'};
-            numCols = 8;
-            tableObj.ColumnFormat = {'char'};
+            tableObj.ColumnName = {'Grid'; 'Pop.Size'; 'Mut.Rt.'; 'Enc'; 'Algorithm'; 'Status'; 'Energy(Avg/Std)'; 'LoadBal.(Avg/Std)'; 'Select'};
+            numCols = 9;
+            tableObj.ColumnFormat = {'char','char','char','char','char','char','char','char','logical'};
+            tableObj.ColumnEditable = [false false false false false false false false true];
             tableObj.RowName = 'numbered';
 
             % Initialize Table content
@@ -334,40 +344,61 @@ classdef utils
                 sGrid = strcat(num2str(paramObj.r(i)),"x",num2str(paramObj.c(i)));
                 energy_avg = "0.0/0.0";
                 loadbal_avg = "0.0/0.0";
-                tableObj.Data(i,:) = [sGrid, num2str(paramObj.pop(i)), num2str(paramObj.mr(i)), num2str(nEnc), paramObj.alg{i,1}, strcat("0/",num2str(nExec)), energy_avg, loadbal_avg];
+                tableObj.Data(i,:) = [sGrid, num2str(paramObj.pop(i)), num2str(paramObj.mr(i)), num2str(nEnc), paramObj.alg{i,1}, strcat("0/",num2str(nExec)), energy_avg, loadbal_avg, 0];
             end
         end
         
+        %% Retrieve the encoding value according to the selected option in @option
+        function encoding = getEncodingTable(option)
+            switch option
+                case 'grid'
+                    encoding = 1;
+                case 'pop'
+                    encoding = 2;
+                case 'mr'
+                    encoding = 3;
+                case 'enc'
+                    encoding = 4;
+                case 'alg'
+                    encoding = 5;
+                case 'status'
+                    encoding = 6;
+                case 'e'
+                    encoding = 7;
+                case 'lb'
+                    encoding = 8;
+                case 'select'
+                    encoding = 9;
+                otherwise
+                    encoding = 0;
+            end
+        end
+
         %% Update a field from the UITable
         % @table        UITable object
         % @i            Row index to be updated
         % @field        Field name of the row @i
         % @val          The new value to update
         function [] = updateTableByField(table, i, field, val)
-            switch field
-                case 'grid'
-                    idx = 1;
-                case 'pop'
-                    idx = 2;
-                case 'mr'
-                    idx = 3;
-                case 'alg'
-                    idx = 4;
-                case 'enc'
-                    idx = 5;
-                case 'status'
-                    idx = 6;
-                case 'e'
-                    idx = 7;
-                case 'lb'
-                    idx = 8;
-                otherwise
-                    idx = 0;
-            end
-
+            idx = utils.getEncodingTable(field);
             if idx > 0
                 table.Data(i,idx) = val;
             else
+                log(['WARNING! Index ' field ' not found in the UITable']);
+            end
+        end
+
+        %% Retrieve a value from a given field from the UITable
+        % @table        UITable object
+        % @i            Row index to be retrieved
+        % @field        Field name of the row @i
+        % @val          The value retrieved
+        function val = getValueTableByField(table, i, field)
+            idx = utils.getEncodingTable(field);
+            if idx > 0
+                val = table.Data(i,idx);
+            else
+                val = 0;
                 log(['WARNING! Index ' field ' not found in the UITable']);
             end
         end

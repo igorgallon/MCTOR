@@ -72,9 +72,9 @@ classdef tgff
         end
 
         %% Convert the Graphs from TGFF format to Source-Target-Weight arrays format
-        function [n, s, t, w, nt] = parse(output_file, meta)
+        function [n, s, t, w, nt] = parse(input_file, meta)
             
-            rawFile = extractFileText(output_file);
+            rawFile = extractFileText(input_file);
             
             tableLabel = meta.table_label;
         
