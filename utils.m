@@ -66,8 +66,9 @@ classdef utils
         end
 
         function n = norm(a)
-            n1 = a - min(a);
-            n = n1 / max(a);
+            % n1 = a - min(a);
+            n = a / max(a);
+            % n = a;
         end
 
         %% Collects the solution parameters (objective values and chromosome) and 

@@ -26,9 +26,9 @@ classdef file_loader
             rawFile = extractFileText(file);
 
             patternInt = '(\d+)';
-            patternFloat = '(\d+[.\d+]?)';
+            patternFloat = '(\d+\.?\d*)';
             patternSpace = '(?>\s|\t)+';
-            patternNumberOfTasks = [patternInt '[\n]*'];
+            patternNumberOfTasks = [patternInt '[\n]+'];
             patternBandwidth = [patternInt patternSpace patternInt patternSpace patternFloat];
             
             numTasks = regexp(rawFile, patternNumberOfTasks, 'tokens', 'once');
