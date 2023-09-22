@@ -65,14 +65,19 @@ classdef utils
             b.best_solution = dec(idx,:);
         end
 
+        function n = norm(a)
+            n1 = a - min(a);
+            n = n1 / max(a);
+        end
+
         %% Collects the solution parameters (objective values and chromosome) and 
         % structure them in an object
         % @dec      Population of the last generation
         % @obj      Objective for each individual of the Solution
         % @con      Constraints violation
         function x = structureSolution(dec, obj)
-            x.energy = obj(:,1);
-            x.fault_tolerance = obj(:,2);
+            x.energy = utils.norm(obj(:,1));
+            x.fault_tolerance = utils.norm(obj(:,2));
             x.chromosomes = dec;
             x.best = utils.getBestSolution(dec, obj);
         end
