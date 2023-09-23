@@ -67,8 +67,8 @@ classdef utils
 
         function n = norm(a)
             % n1 = a - min(a);
-            n = a / max(a);
-            % n = a;
+            % n = a / max(a);
+            n = a;
         end
 
         %% Collects the solution parameters (objective values and chromosome) and 
@@ -76,11 +76,11 @@ classdef utils
         % @dec      Population of the last generation
         % @obj      Objective for each individual of the Solution
         % @con      Constraints violation
-        function x = structureSolution(dec, obj)
-            x.energy = utils.norm(obj(:,1));
-            x.fault_tolerance = utils.norm(obj(:,2));
-            x.chromosomes = dec;
-            x.best = utils.getBestSolution(dec, obj);
+        function p = structureSolution(dec, obj)
+            p.x_axis = utils.norm(obj(:,1));
+            p.y_axis = utils.norm(obj(:,2));
+            p.chromosomes = dec;
+            p.best = utils.getBestSolution(dec, obj);
         end
         
         %% Collect statistics from batch results
@@ -89,6 +89,15 @@ classdef utils
             std_1 = std(results(:,1));
             mean_2 = mean(results(:,2));
             std_2 = std(results(:,2));
+        end
+
+        %% Adjust the limits of the graph according to the x and y axis dinamically
+        function [] = setGraphicScale(g, x, y)
+            min_x = min(x)*0.9;
+            max_x = max(x)*1.1;
+            min_y = min(y)*0.9;
+            max_y = max(y)*1.1;
+            set(g, 'XLim', [min_x max_x], 'YLim', [min_y max_y]);
         end
 
         %% Retrieve the encoding value according to the selected option in DropDown
@@ -227,7 +236,7 @@ classdef utils
             set(gca,'YDir','normal');
             axis([0 totalWidth 0 totalHeight]);
             axis off;
-            % Convert cromossom to matrix shape
+            % Convert chromosome to matrix shape
             cromGrid = reshape(chromosome, nColumns, []).';
             
             % Save the coordinates from each processor figure
@@ -286,8 +295,8 @@ classdef utils
             y = info.Position(2);
             
             % Get the chromosome selected based on x-y-coordinates
-            x_axis = app.solution.energy;
-            y_axis = app.solution.fault_tolerance;
+            x_axis = app.solution.x_axis;
+            y_axis = app.solution.y_axis;
             coordinates = [x_axis(:), y_axis(:)];
             idx = find(ismember(coordinates, [x y], 'rows'), 1);
             chromosomeSelected = app.solution.chromosomes(idx, :);
