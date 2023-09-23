@@ -91,7 +91,11 @@ classdef utils
             std_2 = std(results(:,2));
         end
 
-        %% Adjust the limits of the graph according to the x and y axis dinamically
+        %% Adjust the limits of the graph according to the x and y axis
+        % dinamically. The padding window is 10%.
+        % @g        Graph object
+        % @x        X-Axis
+        % @y        Y-Axis
         function [] = setGraphicScale(g, x, y)
             min_x = min(x)*0.9;
             max_x = max(x)*1.1;
