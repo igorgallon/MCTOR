@@ -58,17 +58,31 @@ classdef utils
             % Calculate the euclidean distance
             d = pdist2(x, y);
             % Find the shortest distance
-            [~, idx] = min(d(:,1));
+            [min_dist, idx] = min(d(:,1));
             % Save the best solution
             b.index = idx;
+            b.all_best_index = find(d(:,1) == min_dist);
             b.best_result = obj(idx,:);
             b.best_solution = dec(idx,:);
         end
 
+        %% Adjust the limits of the graph according to the x and y axis
+        % dinamically. The padding window is 10%.
+        % @g        Graph object
+        % @x        X-Axis
+        % @y        Y-Axis
+        function [] = setGraphicScale(g, x, y)
+            min_x = min(x)*0.9;
+            max_x = max(x);
+            min_y = min(y)*0.9;
+            max_y = max(y);
+            set(g, 'XLim', [0 max_x], 'YLim', [0 max_y]);
+        end
+
         function n = norm(a)
             % n1 = a - min(a);
-            % n = a / max(a);
-            n = a;
+            n = a / max(a);
+            % n = a;
         end
 
         %% Collects the solution parameters (objective values and chromosome) and 
@@ -80,7 +94,7 @@ classdef utils
             p.x_axis = utils.norm(obj(:,1));
             p.y_axis = utils.norm(obj(:,2));
             p.chromosomes = dec;
-            p.best = utils.getBestSolution(dec, obj);
+            p.best = utils.getBestSolution(dec, [p.x_axis p.y_axis]);
         end
         
         %% Collect statistics from batch results
@@ -89,19 +103,6 @@ classdef utils
             std_1 = std(results(:,1));
             mean_2 = mean(results(:,2));
             std_2 = std(results(:,2));
-        end
-
-        %% Adjust the limits of the graph according to the x and y axis
-        % dinamically. The padding window is 10%.
-        % @g        Graph object
-        % @x        X-Axis
-        % @y        Y-Axis
-        function [] = setGraphicScale(g, x, y)
-            min_x = min(x)*0.9;
-            max_x = max(x)*1.1;
-            min_y = min(y)*0.9;
-            max_y = max(y)*1.1;
-            set(g, 'XLim', [min_x max_x], 'YLim', [min_y max_y]);
         end
 
         %% Retrieve the encoding value according to the selected option in DropDown
