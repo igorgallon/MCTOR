@@ -179,9 +179,11 @@ classdef utils
             set(gca,'YDir','normal');
             axis([0 totalWidth 0 totalHeight]);
             axis off;
-        
+            
+            n = length(numTasks);
+
             % Set a color map
-            plotColors = jet(length(numTasks));
+            plotColors = jet(n);
 
             % Save the task ids for each processor element
             nProc = nRows*nColumns;
@@ -217,6 +219,15 @@ classdef utils
                     end
                 end
             end
+            
+            % Apply the legend diferentiating each application by color
+            l_color = [];
+            l_title = [];
+            for t = 1:n
+                l_color = [l_color, plot(nan, nan, '-o', 'color', plotColors(t,:))];
+                l_title = [l_title, strcat("App #",num2str(t))];
+            end
+            legend(l_color, l_title)
         end
         
         function [coordinates] = drawSolutionDeprecated(app, chromosome, cromId)
