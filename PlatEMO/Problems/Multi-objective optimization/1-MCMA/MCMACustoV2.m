@@ -4,23 +4,24 @@ function [CostResultA, CostResultB] = MCMACustoV2(Pop, Dist_Tab, NumCore, S, T, 
 % to optimize Many-Core
 %--------------------------------------------------------------------------
 [L, R] = size(Pop);
-MeuCustoEsult=zeros(1,L);
-Num_Core = nR * nC;
 
 %Calculo custo de comunicação
 sProc = Pop(:,S);
 tProc = Pop(:,T);
+Dist = zeros(L,length(S));
+cost = zeros(L,length(S));
 for s=1:L
     for x=1:length(S)
         Dist(s,x) = Dist_Tab(sProc(s,x), tProc(s,x));
         %Dist = diag(Dist);
         %Dist = Dist';
     end
-cost(s,:)  = Dist(s,:) .* P;
+    cost(s,:)  = Dist(s,:) .* P;
 end
 
 %Calculo de Load Balance
-for i=1:Num_Core
+Hist_Core = zeros(L,NumCore);
+for i=1:NumCore
     Hist_Core(:,i) = sum(Pop==i, 2);
 end
 
