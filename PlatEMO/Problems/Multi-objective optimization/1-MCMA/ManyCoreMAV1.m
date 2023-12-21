@@ -43,57 +43,21 @@ classdef ManyCoreMAV1 < PROBLEM
             obj.encoding = obj.Enc*ones(1,obj.D);  %Tipo de operador
         end
         
-        %%Initialize pop
-        function Population = Initialization(obj,N)
+        %% Initialize pop
+        function Population = Initialization(obj, N)
             if nargin < 2; N = obj.N; end
 
             PopDec = MCMAPopInit(N, obj.nTask, obj.Line, obj.Column, obj.algVar);
 
             Population = obj.Evaluation(PopDec);
         end
+        
         %% Calculate objective values
-        function PopObj = CalObj(obj,PopDec)
-            %S=[1 1 2 3]; %Tarefa Origem
-            S = obj.S;
-            %T=[2 3 4 4]; %Taregfa Destino
-            T = obj.T;
-            %Peso de cada arco
-            %P=[10 20 30 40];
-            P = obj.P;
-            % Inicializa os vetores de processadores
-            %sProc=zeros(1,length(S));
-            %tProc=zeros(1,length(T));
-            %numero de linhas e colunas
-            nR=obj.Line;
-            nC=obj.Column;
-            % Gera os indices
-            [LN,CL]=ind2sub([nR nC],1:nR*nC);
-            Pos_Tab=[LN' CL'];
-            % Cria uma tabela de distancias
-            Dist_Tab=pdist2(Pos_Tab,Pos_Tab,'cityblock');
-
-            g= MCMACusto(PopDec, Dist_Tab, nR*nC, S, T, P,nR, nC);
-            g1= MCMACustoV2(PopDec, Dist_Tab, nR*nC, S, T, P,nR, nC);
+        function PopObj = CalObj(obj, PopDec)
             
-            PopObj = g1;
+            PopObj = MCMACustoV2(PopDec, obj.S, obj.T, obj.P, obj.Line, obj.Column, obj.objList);
 
         end
-%         %% Generate points on the Pareto front
-%         function R = GetOptimum(obj,N)
-%             R = UniformPoint(N,obj.M);
-%             R = R./repmat(sqrt(sum(R.^2,2)),1,obj.M);
-%         end
-%         %% Generate the image of Pareto front
-%  %       function R = GetPF(obj)
-%             if obj.M == 2
-%  %               R = obj.GetOptimum(100);
-%  %           elseif obj.M == 3
-%                 a = linspace(0,pi/2,10)';
-%                 R = {sin(a)*cos(a'),sin(a)*sin(a'),cos(a)*ones(size(a'))};
-%             else
-%                 R = [];
-%             end
-%         end
 
     end
 end

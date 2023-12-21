@@ -19,12 +19,17 @@ classdef utils
         pRectangleCurve = 0.1;
         taskFontWeight = 'bold';
         figureBackgroundColor = [0.69, 0.69, 0.69];
+        
+        %% Options constants
+        OBJ_ENERGY = "E";
+        OBJ_FAULTTOLERANCE = "FT";
+        OBJ_LOADBALANCE = "LB";
 
         %% Batch table parameters constants
-        sTableHeader = {'Grid'; 'Pop.Size'; 'Mut.Rt.'; 'Enc'; 'Algorithm'; 'Status'; 'Energy(Avg/Std)'; 'LoadBal.(Avg/Std)'; 'Select'};
-        nTableNumCols = 9;
-        sColumnFormat = {'char','char','char','char','char','char','char','char','logical'};
-        sColumnEditable = [false false false false false false false false true];
+        sTableHeader = {'Input'; 'Grid'; 'Pop.Size'; 'Mut.Rt.'; 'Enc'; 'Algorithm'; 'Status'; 'Energy(Avg/Std)'; 'LoadBal.(Avg/Std)'; 'Select'};
+        nTableNumCols = 10;
+        sColumnFormat = {'char', 'char','char','char','char','char','char','char','char','logical'};
+        sColumnEditable = [false false false false false false false false false true];
     end
     
     methods(Static)
@@ -117,6 +122,39 @@ classdef utils
             mean_2 = mean(results(:,2));
             std_2 = std(results(:,2));
         end
+        
+        %% Set the axis label string according to the selected objective
+        function [] = setAxisLabel(graph, axis, objective)
+            
+            switch objective
+                case utils.OBJ_ENERGY
+                    label = "Energy";
+                case utils.OBJ_LOADBALANCE
+                    label = "Load Balance";
+                case utils.OBJ_FAULTTOLERANCE
+                    label = "Fault Tolerance";
+            end
+
+            if axis == 'x'
+                xlabel(graph, label);
+            elseif axis == 'y'
+                ylabel(graph, label);
+            else
+                zlabel(graph, label);
+            end
+        end
+
+        %% Retrieve the objectives value according to the selected option in DropDown
+        function objectives = getObjectivesDropDown(option)
+            switch option
+                case '2.E/LB'
+                    objectives = [utils.OBJ_ENERGY, utils.OBJ_LOADBALANCE];
+                case '2.E/FT'
+                    objectives = [utils.OBJ_ENERGY, utils.OBJ_FAULTTOLERANCE];
+                case '3.E/LB/FT'
+                    objectives = [utils.OBJ_ENERGY, utils.OBJ_LOADBALANCE, utils.OBJ_FAULTTOLERANCE];
+            end
+        end
 
         %% Retrieve the encoding value according to the selected option in DropDown
         function encoding = getEncodingDropDown(option)
@@ -133,11 +171,11 @@ classdef utils
                     encoding = 5;
                 case '6.User-defined 1'
                     encoding = 6;
-                case '6.User-defined 2'
+                case '7.User-defined 2'
                     encoding = 7;
             end
         end
-        
+
         %% Retrieve the algorithm and it variation according to the selected opetion in DroDown
         function [algorithm, variation] = getAlgorithmDropDown(option)
             switch option
@@ -308,6 +346,7 @@ classdef utils
             addpath(genpath([pwd,'\thirdparty']))
 
             % Retrieve parameters
+            inputs = app.inputListBatch;
             nEnc = app.encodingBatch;
             grid = app.gridSizeBatch;
             pop = app.popSizeBatch;
@@ -318,11 +357,12 @@ classdef utils
             nExec = app.numExecutions;
             
             % Retrieve the cartesian product between the parameters
-            cp = cartprod(pop, mr, 1:height(alg), 1:height(grid));
+            cp = cartprod(pop, mr, 1:height(alg), 1:height(grid), 1:length(inputs));
             
             % Get the total number of combinations
             n = height(cp);
             
+            paramObj.input = zeros(n,1);
             paramObj.n = n;
             paramObj.r = zeros(n,1);
             paramObj.c = zeros(n,1);
@@ -342,6 +382,7 @@ classdef utils
             
             % Fill up the Table with initial information
             for i = 1:n
+                paramObj.inputs(i) = inputs(cp(i,5));
                 paramObj.r(i) = grid(cp(i,4),1);
                 paramObj.c(i) = grid(cp(i,4),2);
                 paramObj.pop(i) = cp(i,1);
@@ -350,7 +391,7 @@ classdef utils
                 sGrid = strcat(num2str(paramObj.r(i)),"x",num2str(paramObj.c(i)));
                 energy_avg = "0.0/0.0";
                 loadbal_avg = "0.0/0.0";
-                tableObj.Data(i,:) = [sGrid, num2str(paramObj.pop(i)), num2str(paramObj.mr(i)), num2str(nEnc), paramObj.alg{i,1}, strcat("0/",num2str(nExec)), energy_avg, loadbal_avg, 0];
+                tableObj.Data(i,:) = [paramObj.inputs(i), sGrid, num2str(paramObj.pop(i)), num2str(paramObj.mr(i)), num2str(nEnc), paramObj.alg{i,1}, strcat("0/",num2str(nExec)), energy_avg, loadbal_avg, 0];
             end
             % Format parameters to save info
             app.paramsToSave = array2table(tableObj.Data(:,1:5));
@@ -360,24 +401,26 @@ classdef utils
         %% Retrieve the encoding value according to the selected option in @option
         function encoding = getEncodingTable(option)
             switch option
-                case 'grid'
+                case 'input'
                     encoding = 1;
-                case 'pop'
+                case 'grid'
                     encoding = 2;
-                case 'mr'
+                case 'pop'
                     encoding = 3;
-                case 'enc'
+                case 'mr'
                     encoding = 4;
-                case 'alg'
+                case 'enc'
                     encoding = 5;
-                case 'status'
+                case 'alg'
                     encoding = 6;
-                case 'e'
+                case 'status'
                     encoding = 7;
-                case 'lb'
+                case 'e'
                     encoding = 8;
-                case 'select'
+                case 'lb'
                     encoding = 9;
+                case 'select'
+                    encoding = 10;
                 otherwise
                     encoding = 0;
             end
@@ -428,14 +471,27 @@ classdef utils
             % Save the matlab results as-is
             batch_results = app.batchResults;
             save(strcat(sReportFolder,'/results.mat'), "batch_results");
-
+            
+            [nP lP] = size(app.paramsToSave);
+            objectiveStatistics = cell(n, lP + 2*length(app.objList));
+            
             % Convert matlab results to CSV files
             for i=1:n
-                writematrix(app.batchResults{i,1}.best_objectives, strcat(sReportFolder,'/',num2str(i),'_best_objectives.csv'));
-                writecell(app.batchResults{i,1}.best_solutions, strcat(sReportFolder,'/',num2str(i),'_best_solutions.csv'));
+                writematrix(batch_results{i,1}.best_objectives, strcat(sReportFolder,'/',num2str(i),'_best_objectives.csv'));
+                writecell(batch_results{i,1}.best_solutions, strcat(sReportFolder,'/',num2str(i),'_best_solutions.csv'));
+                
+                for j=1:lP
+                    objectiveStatistics{i,j} = app.paramsToSave{i,j};
+                end
+                objectiveStatistics{i,j+1} = batch_results{i,1}.mean_energy;
+                objectiveStatistics{i,j+2} = batch_results{i,1}.std_energy;
+                objectiveStatistics{i,j+3} = batch_results{i,1}.mean_loadbalance;
+                objectiveStatistics{i,j+4} = batch_results{i,1}.std_loadbalance;
             end
+            
             % Save parameters info to a CSV file
-            writetable(app.paramsToSave,strcat(sReportFolder,'/params'));
+            writetable(app.paramsToSave, strcat(sReportFolder,'/params'));
+            writecell(objectiveStatistics, strcat(sReportFolder,'/statistics.csv'));
         end
 
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
