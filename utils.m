@@ -458,9 +458,15 @@ classdef utils
         end
 
         %% Export the matlab results to readable files
-        function [] = exportResults(app)
+        function [] = exportResults(app, numExecuted)
             sRoot = strcat(app.rootFolder, '/batch/');
-            n = height(app.batchResults);
+            
+            if numExecuted > 0
+                n = numExecuted;
+            else
+                n = height(app.batchResults);
+            end
+
             % Create the folder name by adding a timestamp
             sReportFolder = strcat(sRoot,string(datetime('now', 'Format', 'yyyyMMdd_HHmmSS')));
             
@@ -481,7 +487,8 @@ classdef utils
             for i=1:n
                 writematrix(batch_results{i,1}.best_objectives, strcat(sReportFolder,'/',num2str(i),'_best_objectives.csv'));
                 writecell(batch_results{i,1}.best_solutions, strcat(sReportFolder,'/',num2str(i),'_best_solutions.csv'));
-                
+                writecell(batch_results{i,1}.best_chromosome, strcat(sReportFolder,'/',num2str(i),'_best_chromosome'));
+
                 for j=1:lP
                     objectiveStatistics{i,j} = app.paramsToSave{i,j};
                 end
