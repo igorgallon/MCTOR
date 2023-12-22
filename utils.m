@@ -362,7 +362,8 @@ classdef utils
             % Get the total number of combinations
             n = height(cp);
             
-            paramObj.input = zeros(n,1);
+            paramObj.appIdx = zeros(n,1);
+            paramObj.appName = cell(n,1);
             paramObj.n = n;
             paramObj.r = zeros(n,1);
             paramObj.c = zeros(n,1);
@@ -382,7 +383,8 @@ classdef utils
             
             % Fill up the Table with initial information
             for i = 1:n
-                paramObj.inputs(i) = inputs(cp(i,5));
+                paramObj.appIdx(i) = cp(i,5);
+                paramObj.appName(i) = cellstr(inputs{1,cp(i,5)});
                 paramObj.r(i) = grid(cp(i,4),1);
                 paramObj.c(i) = grid(cp(i,4),2);
                 paramObj.pop(i) = cp(i,1);
@@ -391,11 +393,11 @@ classdef utils
                 sGrid = strcat(num2str(paramObj.r(i)),"x",num2str(paramObj.c(i)));
                 energy_avg = "0.0/0.0";
                 loadbal_avg = "0.0/0.0";
-                tableObj.Data(i,:) = [paramObj.inputs(i), sGrid, num2str(paramObj.pop(i)), num2str(paramObj.mr(i)), num2str(nEnc), paramObj.alg{i,1}, strcat("0/",num2str(nExec)), energy_avg, loadbal_avg, 0];
+                tableObj.Data(i,:) = [paramObj.appName(i), sGrid, num2str(paramObj.pop(i)), num2str(paramObj.mr(i)), num2str(nEnc), paramObj.alg{i,1}, "Wait", energy_avg, loadbal_avg, 0];
             end
             % Format parameters to save info
-            app.paramsToSave = array2table(tableObj.Data(:,1:5));
-            app.paramsToSave.Properties.VariableNames(1:5) = utils.sTableHeader(1:5);
+            app.paramsToSave = array2table(tableObj.Data(:,1:6));
+            app.paramsToSave.Properties.VariableNames(1:6) = utils.sTableHeader(1:6);
         end
         
         %% Retrieve the encoding value according to the selected option in @option
@@ -460,7 +462,7 @@ classdef utils
             sRoot = strcat(app.rootFolder, '/batch/');
             n = height(app.batchResults);
             % Create the folder name by adding a timestamp
-            sReportFolder = strcat(sRoot,string(datetime('now', 'Format', 'yyyyMMdd_HHmmSS')),'_',app.fileSelected);
+            sReportFolder = strcat(sRoot,string(datetime('now', 'Format', 'yyyyMMdd_HHmmSS')));
             
             % Create the folder structure
             if ~exist(sRoot, 'dir')
@@ -472,7 +474,7 @@ classdef utils
             batch_results = app.batchResults;
             save(strcat(sReportFolder,'/results.mat'), "batch_results");
             
-            [nP lP] = size(app.paramsToSave);
+            [~, lP] = size(app.paramsToSave);
             objectiveStatistics = cell(n, lP + 2*length(app.objList));
             
             % Convert matlab results to CSV files
@@ -492,6 +494,7 @@ classdef utils
             % Save parameters info to a CSV file
             writetable(app.paramsToSave, strcat(sReportFolder,'/params'));
             writecell(objectiveStatistics, strcat(sReportFolder,'/statistics.csv'));
+            utils.log(['Results saved in: ' sReportFolder]);
         end
 
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
