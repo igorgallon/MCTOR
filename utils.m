@@ -117,10 +117,17 @@ classdef utils
         
         %% Collect statistics from batch results
         function [mean_1, std_1, mean_2, std_2] = getStatistics(results)
-            mean_1 = mean(results(:,1));
-            std_1 = std(results(:,1));
-            mean_2 = mean(results(:,2));
-            std_2 = std(results(:,2));
+            r_1 = results(:,1);
+            r_2 = results(:,2);
+
+            norm_1 = (r_1 - min(r_1))/(max(r_1) - min(r_1));
+            norm_2 = (r_2 - min(r_2))/(max(r_2) - min(r_2));
+
+            mean_1 = mean(norm_1);
+            std_1 = std(norm_1);
+
+            mean_2 = mean(norm_2);
+            std_2 = std(norm_2);
         end
         
         %% Set the axis label string according to the selected objective
@@ -176,39 +183,18 @@ classdef utils
             end
         end
 
-        %% Retrieve the algorithm and it variation according to the selected opetion in DroDown
+        %% Retrieve the algorithm and it variation according to the selected
+        % operation in DropDown.The option must follow the pattern {ALGORITHM}_V{VERSION}
         function [algorithm, variation] = getAlgorithmDropDown(option)
-            switch option
-                case 'NSGAII'
-                    algorithm = "NSGAII";
-                    variation = 0;
-                case 'NSGAII_V1'
-                    algorithm = "NSGAII";
-                    variation = 1;
-                case 'NSGAII_V2'
-                    algorithm = "NSGAII";
-                    variation = 2;
-                case 'NSGAII_V3'
-                    algorithm = "NSGAII";
-                    variation = 3;
-                case 'NSGAII_V4'
-                    algorithm = "NSGAII";
-                    variation = 4;
-                case 'NSGAIII'
-                    algorithm = "NSGAIII";
-                    variation = 0;
-                case 'NSGAIII_V1'
-                    algorithm = "NSGAIII";
-                    variation = 1;
-                case 'NSGAIII_V2'
-                    algorithm = "NSGAIII";
-                    variation = 2;
-                case 'NSGAIII_V3'
-                    algorithm = "NSGAIII";
-                    variation = 3;
-                case 'NSGAIII_V4'
-                    algorithm = "NSGAIII";
-                    variation = 4;
+            % Split the option by '_'
+            name = split(option, '_');
+            % Retrieve the first portion as the algorithm name
+            algorithm = name{1,1};
+            % Retrieve the second portion as the algorithm variation
+            if height(name) > 1
+                variation = str2double(name{2,1}(2));
+            else
+                variation = 0;
             end
         end
 
@@ -333,7 +319,7 @@ classdef utils
             g = app.g;
             r = app.numRows;
             c = app.numColumns;
-            t = app.numTasks;
+            t = app.applications(1).numTasks;
             % Draw the chromosome solution
             utils.drawSolution(g, r, c, t, chromosomeSelected, idx, false);
             
