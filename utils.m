@@ -60,11 +60,34 @@ classdef utils
             g = 1;
             id = vid;
         end
-        
 
-        function coord = getCoordinate(n, r, c)
-            x = mod((n-1),c)+1;
-            y = fix((n-1)/r)+1;
+        %% Calculate the total time of the grid mapping based on the original
+        % graph
+        function tTot = getTotalTime(ind, r, c, s, t, w)
+            
+            nVertex = length(w);
+            weightSum = zeros(nVertex);
+            
+            taskCoord = utils.getCoordinate(ind, r, c);
+            
+            for i=1:nVertex
+                d = pdist2(taskCoord(s(i),:), taskCoord(t(i),:), 'cityblock');
+                weightSum(i) = d * w(i);
+            end
+            
+            tTot = sum(weightSum,'all');
+        end
+        
+        function app = initializeApplication(numFiles)
+            % Initialize array of structures
+            s = struct('applicationName', '', 'numTasks', [], 'sourceIds', [], 'targetIds', [], 'weights', []);
+            app = repmat(s, 1, numFiles);
+        end
+
+        %% Retrieve the x-y coordinates for each task in the processors grid
+        function coord = getCoordinate(ind, r, c)
+            x = mod((ind-1),c)+1;
+            y = fix((ind-1)/r)+1;
             coord = [x;y]';
         end
 
@@ -229,6 +252,8 @@ classdef utils
         % @chromosome   The chromosome solution
         % @cromId       The chromosome ID
         function [] = drawSolution(graph, nRows, nColumns, numTasks, chromosome, cromId, standaloneMode)
+            
+            utils.log(['Chromosome: ' sprintf('%d ', chromosome)])
 
             % Set up the draw area
             if standaloneMode
@@ -487,7 +512,7 @@ classdef utils
             % Save parameters info to a CSV file
             writetable(app.paramsToSave, strcat(sReportFolder,'/params'));
             writecell(objectiveStatistics, strcat(sReportFolder,'/statistics.csv'));
-            utils.log(['Results saved in: ' sReportFolder]);
+            log(['Results saved in: ' sReportFolder]);
         end
 
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
