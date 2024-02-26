@@ -2,6 +2,7 @@ function costResult = MCMACustoV2(Pop, S, T, P, nR, nC, objectivesList)
 %------------------------------- Reference --------------------------------
 % Created by Manoel Aranda de Almeida 25/05/2023
 % to optimize Many-Core
+% costResult = [communicationResults, {loadBalance | faultTolerance | (loadBalance , faultTolerance)}]
 %--------------------------------------------------------------------------
     [L, R] = size(Pop);
     
@@ -59,13 +60,4 @@ function costResult = MCMACustoV2(Pop, S, T, P, nR, nC, objectivesList)
         % Concatenate the results
         costResult = [costResult, costFaultTolerance];
     end
-
-    % % Calculate the Total time (theorical)
-    % totalTime = zeros(L,1);
-    % for i=1:L
-    %     totalTime(i,:) = utils.getTotalTime(Pop(i,:), nR, nC, S, T, P);
-    % end
-    % 
-    % % Concatenate the results
-    % costResult = [costResult, totalTime];
 end

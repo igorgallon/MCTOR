@@ -26,7 +26,7 @@ classdef utils
         OBJ_LOADBALANCE = "LB";
 
         %% Batch table parameters constants
-        sTableHeader = {'Input'; 'Grid'; 'Pop.Size'; 'Mut.Rt.'; 'Enc'; 'Algorithm'; 'Status'; 'Energy(Avg/Std)'; 'LoadBal.(Avg/Std)'; 'Select'};
+        sTableHeader = {'Input'; 'Grid'; 'Pop.Size'; 'Mut.Rt.'; 'Algorithm'; 'Status'; 'Energy(Avg/Std)'; 'LoadBal.(Avg/Std)'; 'TTot'; 'Select'};
         nTableNumCols = 10;
         sColumnFormat = {'char', 'char','char','char','char','char','char','char','char','logical'};
         sColumnEditable = [false false false false false false false false false true];
@@ -139,7 +139,7 @@ classdef utils
         end
         
         %% Collect statistics from batch results
-        function [mean_1, std_1, mean_2, std_2] = getStatistics(results)
+        function [mean_1, std_1, mean_2, std_2, ttot] = getStatistics(results, results_ttot)
             r_1 = results(:,1);
             r_2 = results(:,2);
 
@@ -151,6 +151,8 @@ classdef utils
 
             mean_2 = mean(norm_2);
             std_2 = std(norm_2);
+            
+            ttot = mean(results_ttot);
         end
         
         %% Set the axis label string according to the selected objective
@@ -404,11 +406,11 @@ classdef utils
                 sGrid = strcat(num2str(paramObj.r(i)),"x",num2str(paramObj.c(i)));
                 energy_avg = "0.0/0.0";
                 loadbal_avg = "0.0/0.0";
-                tableObj.Data(i,:) = [paramObj.appName(i), sGrid, num2str(paramObj.pop(i)), num2str(paramObj.mr(i)), num2str(nEnc), paramObj.alg{i,1}, "Wait", energy_avg, loadbal_avg, 0];
+                tableObj.Data(i,:) = [paramObj.appName(i), sGrid, num2str(paramObj.pop(i)), num2str(paramObj.mr(i)), paramObj.alg{i,1}, "Wait", energy_avg, loadbal_avg, "0", 0];
             end
             % Format parameters to save info
-            app.paramsToSave = array2table(tableObj.Data(:,1:6));
-            app.paramsToSave.Properties.VariableNames(1:6) = utils.sTableHeader(1:6);
+            app.paramsToSave = array2table(tableObj.Data(:,1:5));
+            app.paramsToSave.Properties.VariableNames(1:5) = utils.sTableHeader(1:5);
         end
         
         %% Retrieve the encoding value according to the selected option in @option
@@ -422,15 +424,15 @@ classdef utils
                     encoding = 3;
                 case 'mr'
                     encoding = 4;
-                case 'enc'
-                    encoding = 5;
                 case 'alg'
-                    encoding = 6;
+                    encoding = 5;
                 case 'status'
-                    encoding = 7;
+                    encoding = 6;
                 case 'e'
-                    encoding = 8;
+                    encoding = 7;
                 case 'lb'
+                    encoding = 8;
+                case 'ttot'
                     encoding = 9;
                 case 'select'
                     encoding = 10;
@@ -449,7 +451,7 @@ classdef utils
             if idx > 0
                 table.Data(i,idx) = val;
             else
-                log(['WARNING! Index ' field ' not found in the UITable']);
+                utils.log(['WARNING! Index ' field ' not found in the UITable']);
             end
         end
 
@@ -464,7 +466,7 @@ classdef utils
                 val = table.Data(i,idx);
             else
                 val = 0;
-                log(['WARNING! Index ' field ' not found in the UITable']);
+                utils.log(['WARNING! Index ' field ' not found in the UITable']);
             end
         end
 
@@ -507,12 +509,13 @@ classdef utils
                 objectiveStatistics{i,j+2} = batch_results{i,1}.std_energy;
                 objectiveStatistics{i,j+3} = batch_results{i,1}.mean_loadbalance;
                 objectiveStatistics{i,j+4} = batch_results{i,1}.std_loadbalance;
+                objectiveStatistics{i,j+5} = batch_results{i,1}.mean_ttot;
             end
             
             % Save parameters info to a CSV file
             writetable(app.paramsToSave, strcat(sReportFolder,'/params'));
             writecell(objectiveStatistics, strcat(sReportFolder,'/statistics.csv'));
-            log(['Results saved in: ' sReportFolder]);
+            utils.log(['Results saved in: ' sReportFolder]);
         end
 
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
