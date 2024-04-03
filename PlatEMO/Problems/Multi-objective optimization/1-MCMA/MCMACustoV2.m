@@ -1,6 +1,6 @@
 function costResult = MCMACustoV2(Pop, S, T, P, nR, nC, objectivesList)
 %------------------------------- Reference --------------------------------
-% Created by Manoel Aranda de Almeida 25/05/2023
+% Created by Manoel Aranda de Almeida 25/05/2023 and Igor Gallon
 % to optimize Many-Core
 % costResult = [communicationResults, {loadBalance | faultTolerance | (loadBalance , faultTolerance)}]
 %--------------------------------------------------------------------------
@@ -20,8 +20,8 @@ function costResult = MCMACustoV2(Pop, S, T, P, nR, nC, objectivesList)
         tProc = Pop(:,T);
         Dist = zeros(L,length(S));
         cost = zeros(L,length(S));
-        for s=1:L
-            for x=1:length(S)
+        for s = 1:L
+            for x = 1:length(S)
                 Dist(s,x) = Dist_Tab(sProc(s,x), tProc(s,x));
             end
             cost(s,:) = Dist(s,:) .* P;
@@ -35,7 +35,7 @@ function costResult = MCMACustoV2(Pop, S, T, P, nR, nC, objectivesList)
     % Calculate the Load Balance cost
     if ismember(utils.OBJ_LOADBALANCE, objectivesList)
         Hist_Core = zeros(L,nCores);
-        for i=1:nCores
+        for i = 1:nCores
             Hist_Core(:,i) = sum(Pop==i, 2);
         end
         costLoadBalance = abs(1-std(Hist_Core, 0, 2));
@@ -47,7 +47,7 @@ function costResult = MCMACustoV2(Pop, S, T, P, nR, nC, objectivesList)
     % Calculate the Fault Tolerance cost
     if ismember(utils.OBJ_FAULTTOLERANCE, objectivesList)
         costFaultTolerance = zeros(L,1);
-        for i=1:L
+        for i = 1:L
             ft = FaultToleranceCost(Pop(i,:), nR, nC);
             try
                 costFaultTolerance(i,:) = ft;

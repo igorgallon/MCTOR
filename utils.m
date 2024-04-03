@@ -113,11 +113,11 @@ classdef utils
         % @x        X-Axis
         % @y        Y-Axis
         function [] = setGraphicScale(g, x, y)
-            min_x = min(x)*0.9;
+            min_x = min(x);
             max_x = max(x);
-            min_y = min(y)*0.9;
+            min_y = min(y);
             max_y = max(y);
-            set(g, 'XLim', [0 max_x], 'YLim', [0 max_y]);
+            set(g, 'XLim', [min_x max_x], 'YLim', [min_y max_y]);
         end
 
         function n = norm(a)
@@ -144,15 +144,19 @@ classdef utils
             r_2 = results(:,2);
 
             norm_1 = (r_1 - min(r_1))/(max(r_1) - min(r_1));
-            norm_2 = (r_2 - min(r_2))/(max(r_2) - min(r_2));
+            % norm_2 = (r_2 - min(r_2))/(max(r_2) - min(r_2));
 
             mean_1 = mean(norm_1);
-            std_1 = std(norm_1);
+            std_1 = std(r_1);
 
-            mean_2 = mean(norm_2);
-            std_2 = std(norm_2);
+            mean_2 = mean(r_2);
+            std_2 = std(r_2);
             
             ttot = mean(results_ttot);
+
+            if ~isfinite(mean_2) || ~isfinite(std_2)
+                disp("Error");
+            end
         end
         
         %% Set the axis label string according to the selected objective

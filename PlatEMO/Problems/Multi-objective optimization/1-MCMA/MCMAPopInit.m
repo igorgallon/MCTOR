@@ -9,25 +9,39 @@
 % indivíduo é um roteador e precisa usar 
 function popOut = MCMAPopInit(numPop, numTasks, nRows, nColumns, selectAlgorithm)       
     
+    maxSteps = 10;
+    numSteps = maxSteps;
+
     numProc = nRows*nColumns;
     
     if selectAlgorithm == 0
         popOut = randi(numProc, numPop,  numTasks);
     else
-        halfPop = fix(numPop/2);
+        % numPop = fix(numPop/2);
         
+        % Each seed must generate numSteps chromosomes
+        numSeeds = fix(numPop/maxSteps);
+
         % Used to store the processors id arranged by the selected Engineered
         % Mapping algorithm
         coresMatrix = reshape(1:numProc, nColumns, nRows).';
         % Used to store the tasks id according to the processors arrangement
-        mappedPop = zeros(halfPop, numTasks);
+        mappedPop = zeros(numPop, numTasks);
         % Used to store the initial sequence of tasks ids
-        tasksIds = zeros(halfPop, numTasks);
+        tasksIds = zeros(numPop, numTasks);
         
         % Populate the initial sequence of tasks by random permutation from 1 to
         % numTasks
-        for i=1:halfPop
-            tasksIds(i,:) = randperm(numTasks);
+        seed = zeros(1,numTasks);
+        k = 1;
+        
+        for i = 1:numSeeds
+            seed = randperm(numTasks);
+            for j = 1:numSteps
+                tasksIds(k,:) = seed;
+                seed = circshift(seed,1);
+                k = k+1;
+            end
         end
         
         % Select the Engineered Mapping algorithm
@@ -43,7 +57,7 @@ function popOut = MCMAPopInit(numPop, numTasks, nRows, nColumns, selectAlgorithm
         end
         
         % Apply the Engineered Mapping in the tasks arrangement
-        for i=1:halfPop
+        for i=1:numPop
             k = 1;
             for j=1:numTasks
                 ind = mod(k-1,numProc)+1;
@@ -53,11 +67,11 @@ function popOut = MCMAPopInit(numPop, numTasks, nRows, nColumns, selectAlgorithm
         end
         
         % Generate half of population by random permutation only
-        randomPop = randi(numProc, halfPop,  numTasks);
+        % randomPop = randi(numProc, numPop,  numTasks);
         
         % The initial population is composed of random placement and engineered
         % mapping
-        popOut = [randomPop; mappedPop];
+        popOut = mappedPop;
     end
 end
 

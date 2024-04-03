@@ -65,6 +65,7 @@ classdef ManyCoreMAV1 < PROBLEM
         %% Calculate objective values
         function PopObj = CalObj(obj, PopDec)
             
+            
             PopObj = MCMACustoV2(PopDec, obj.S, obj.T, obj.W, obj.nRow, obj.nColumn, obj.objList);
             obj.evalCnt = obj.evalCnt + 1;
 

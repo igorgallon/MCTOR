@@ -2,16 +2,18 @@ clear;
 close all;
 
 % folder = 'batch\20240108_014756';
-folder = 'batch\20240112_114949';
+folder = 'batch\20240123_141481_firstgen';
+% folder = 'batch\20240209_113072_lastgen';
 
 load([folder '\results.mat']);
 
 params = readtable([folder '\params.txt'], 'Delimiter', ',', ReadVariableNames=true);
 [n, l] = size(params);
 
-showStatistics('3x3', 1, 15, params, batch_results);
-showStatistics('3x4', 16, 30, params, batch_results);
-showStatistics('4x4', 31, 45, params, batch_results);
+showStatistics('4x4 (pcb circle)', 1, 5, params, batch_results);
+showStatistics('4x4 (pcb square)', 6, 10, params, batch_results);
+showStatistics('4x4 (pcb track)', 11, 15, params, batch_results);
+showStatistics('4x4 (satellite)', 16, 20, params, batch_results);
 
 function [] = showStatistics(grid_name, init, finish, params, batch_results)
     

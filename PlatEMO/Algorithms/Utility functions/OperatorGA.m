@@ -70,10 +70,7 @@ function Offspring = OperatorGA(Problem,Parent,Parameter)
         Offspring(:,Type{5}) = GApermutation(Parent1(:,Type{5}),Parent2(:,Type{5}),proC);
     end
     if ~isempty(Type{6})        % Permutation variables (customized crossover and permutation)
-        Offspring(:,Type{6}) = MCpermutationGA(Parent1(:,Type{6}),Parent2(:,Type{6}),proC,Problem.parameter{11});
-    end
-    if ~isempty(Type{7})        % Permutation variables (customized crossover and permutation)
-        Offspring(:,Type{7}) = MCMApermutationGA(Parent1(:,Type{7}),Parent2(:,Type{7}),proC,Problem.parameter{11});
+        Offspring(:,Type{6}) = MCMApermutationGA(Parent1(:,Type{6}),Parent2(:,Type{6}),proC,Problem.parameter{11});
     end
     if evaluated
         Offspring = Problem.Evaluation(Offspring);
