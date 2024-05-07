@@ -26,10 +26,18 @@ classdef utils
         OBJ_LOADBALANCE = "LB";
 
         %% Batch table parameters constants
-        sTableHeader = {'Input'; 'Grid'; 'Pop.Size'; 'Mut.Rt.'; 'Algorithm'; 'Status'; 'Energy(Avg/Std)'; 'LoadBal.(Avg/Std)'; 'TTot'; 'Select'};
-        nTableNumCols = 10;
-        sColumnFormat = {'char', 'char','char','char','char','char','char','char','char','logical'};
-        sColumnEditable = [false false false false false false false false false true];
+        nTableNumColsEL = 11;
+        sTableHeaderEL = {'Input'; 'Approach'; 'Grid'; 'Pop.Size'; 'Mut.Rt.'; 'Algorithm'; 'Status'; 'Energy(Avg/Std)'; 'LoadBal.(Avg/Std)'; 'TTot'; 'Select'};
+        sColumnFormatEL = {'char', 'char','char','char','char','char','char','char','char','char','logical'};
+        sColumnEditableEL = [false false false false false false false false false false true];
+        nTableNumColsEF = 11;
+        sTableHeaderEF = {'Input'; 'Approach'; 'Grid'; 'Pop.Size'; 'Mut.Rt.'; 'Algorithm'; 'Status'; 'Energy(Avg/Std)'; 'FaultTol.(Avg/Std)'; 'TTot'; 'Select'};
+        sColumnFormatEF = {'char', 'char','char','char','char','char','char','char','char','char','logical'};
+        sColumnEditableEF = [false false false false false false false false false false true];
+        nTableNumColsELF = 12;
+        sTableHeaderELF = {'Input'; 'Approach'; 'Grid'; 'Pop.Size'; 'Mut.Rt.'; 'Algorithm'; 'Status'; 'Energy(Avg/Std)'; 'LoadBal.(Avg/Std)'; 'FaultTol.(Avg/Std)'; 'TTot'; 'Select'};
+        sColumnFormatELF = {'char', 'char','char','char','char','char','char','char','char','char','char','logical'};
+        sColumnEditableELF = [false false false false false false false false false false false true];
     end
     
     methods(Static)
@@ -113,17 +121,20 @@ classdef utils
         % @x        X-Axis
         % @y        Y-Axis
         function [] = setGraphicScale(g, x, y)
-            min_x = min(x);
-            max_x = max(x);
-            min_y = min(y);
-            max_y = max(y);
+            min_x = min(x)*0.9;
+            max_x = max(x)*1.1;
+            min_y = min(y)*0.9;
+            max_y = max(y)*1.1;
             set(g, 'XLim', [min_x max_x], 'YLim', [min_y max_y]);
         end
-
+        
+        %% Normalize a given array by the maximum element
         function n = norm(a)
-            % n1 = a - min(a);
-            n = a / max(a);
-            % n = a;
+            if a ~= 0
+                n = a / max(a);
+            else
+                n = a;
+            end
         end
 
         %% Collects the solution parameters (objective values and chromosome) and 
@@ -137,18 +148,45 @@ classdef utils
             p.chromosomes = dec;
             p.best = utils.getBestSolution(dec, [p.x_axis p.y_axis]);
         end
-        
+
+        function [n, s, t, w] = concatApps(app)
+            n = [];
+            s = [];
+            t = [];
+            w = [];
+
+            for j = 1:length(app.applications)
+                n = [n app.applications(j).numTasks];
+                s = [s app.applications(j).sourceIds];
+                t = [t app.applications(j).targetIds];
+                w = [w app.applications(j).weights];
+            end
+        end
+
+        function [n, s, t, w] = splitApps(app)
+            n = {};
+            s = {};
+            t = {};
+            w = {};
+            
+            % Retrieve the current Application Graphs
+            for j = 1:length(app.applications)
+                n{1,j} = app.applications(j).numTasks;
+                s{1,j} = app.applications(j).sourceIds;
+                t{1,j} = app.applications(j).targetIds;
+                w{1,j} = app.applications(j).weights;
+            end
+        end
+
         %% Collect statistics from batch results
-        function [mean_1, std_1, mean_2, std_2, ttot] = getStatistics(results, results_ttot)
+        function [mean_1, std_1, mean_2, std_2, mean_3, std_3, ttot] = getStatistics(objList, results, results_ttot)
             r_1 = results(:,1);
-            r_2 = results(:,2);
-
             norm_1 = (r_1 - min(r_1))/(max(r_1) - min(r_1));
-            % norm_2 = (r_2 - min(r_2))/(max(r_2) - min(r_2));
-
             mean_1 = mean(norm_1);
             std_1 = std(r_1);
-
+            
+            r_2 = results(:,2);
+            % norm_2 = (r_2 - min(r_2))/(max(r_2) - min(r_2));
             mean_2 = mean(r_2);
             std_2 = std(r_2);
             
@@ -156,6 +194,16 @@ classdef utils
 
             if ~isfinite(mean_2) || ~isfinite(std_2)
                 disp("Error");
+            end
+            
+            mean_3 = 0;
+            std_3 = 0;
+
+            if length(objList) == 3
+                r_3 = results(:,3);
+                % norm_3 = (r_3 - min(r_3))/(max(r_3) - min(r_3));
+                mean_3 = mean(r_3);
+                std_3 = std(r_3);
             end
         end
         
@@ -363,18 +411,19 @@ classdef utils
             addpath(genpath([pwd,'\thirdparty']))
 
             % Retrieve parameters
-            inputs = app.inputListBatch;
-            nEnc = app.encodingBatch;
+            if strcmp(app.applicationMode,'MULTI') || strcmp(app.applicationModeBatch,'MULTI')
+                inputs = {'multi apps'};
+            else
+                inputs = app.inputListBatch;
+            end
             grid = app.gridSizeBatch;
             pop = app.popSizeBatch;
             mr = app.mutationRateBatch;
             alg = app.algorithmsBatch;
-            
-            % For each combination the platemo will be called @nExec times
-            nExec = app.numExecutions;
+            approach = app.approachesBatch;
             
             % Retrieve the cartesian product between the parameters
-            cp = cartprod(pop, mr, 1:height(alg), 1:height(grid), 1:length(inputs));
+            cp = cartprod(pop, 1:height(approach), mr, 1:height(alg), 1:height(grid), 1:length(inputs));
             
             % Get the total number of combinations
             n = height(cp);
@@ -387,12 +436,25 @@ classdef utils
             paramObj.pop = zeros(n,1);
             paramObj.mr = zeros(n,1);
             paramObj.alg = cell(n,1);
+            paramObj.approach = cell(n,1);
             
             % Set up Table
-            tableObj.ColumnName = utils.sTableHeader;
-            numCols = utils.nTableNumCols;
-            tableObj.ColumnFormat = utils.sColumnFormat;
-            tableObj.ColumnEditable = utils.sColumnEditable;
+            if app.objList(1) == utils.OBJ_ENERGY && app.objList(2) == utils.OBJ_LOADBALANCE
+                numCols = utils.nTableNumColsEL;
+                tableObj.ColumnName = utils.sTableHeaderEL;
+                tableObj.ColumnFormat = utils.sColumnFormatEL;
+                tableObj.ColumnEditable = utils.sColumnEditableEL;
+            elseif app.objList(1) == utils.OBJ_ENERGY && app.objList(2) == utils.OBJ_FAULTTOLERANCE
+                numCols = utils.nTableNumColsEF;
+                tableObj.ColumnName = utils.sTableHeaderEF;
+                tableObj.ColumnFormat = utils.sColumnFormatEF;
+                tableObj.ColumnEditable = utils.sColumnEditableEF;
+            else
+                numCols = utils.nTableNumColsELF;
+                tableObj.ColumnName = utils.sTableHeaderELF;
+                tableObj.ColumnFormat = utils.sColumnFormatELF;
+                tableObj.ColumnEditable = utils.sColumnEditableELF;
+            end
             tableObj.RowName = 'numbered';
 
             % Initialize Table content
@@ -400,46 +462,67 @@ classdef utils
             
             % Fill up the Table with initial information
             for i = 1:n
-                paramObj.appIdx(i) = cp(i,5);
-                paramObj.appName(i) = cellstr(inputs{1,cp(i,5)});
-                paramObj.r(i) = grid(cp(i,4),1);
-                paramObj.c(i) = grid(cp(i,4),2);
+                paramObj.appIdx(i) = cp(i,6);
+                paramObj.appName(i) = cellstr(inputs{1,cp(i,6)});
+                paramObj.r(i) = grid(cp(i,5),1);
+                paramObj.c(i) = grid(cp(i,5),2);
                 paramObj.pop(i) = cp(i,1);
-                paramObj.mr(i) = cp(i,2);
-                paramObj.alg{i,1} = alg{cp(i,3),1};
+                paramObj.mr(i) = cp(i,3);
+                paramObj.alg{i,1} = alg{cp(i,4),1};
+                paramObj.approach{i,1} = approach{cp(i,2)};
                 sGrid = strcat(num2str(paramObj.r(i)),"x",num2str(paramObj.c(i)));
-                energy_avg = "0.0/0.0";
-                loadbal_avg = "0.0/0.0";
-                tableObj.Data(i,:) = [paramObj.appName(i), sGrid, num2str(paramObj.pop(i)), num2str(paramObj.mr(i)), paramObj.alg{i,1}, "Wait", energy_avg, loadbal_avg, "0", 0];
+                if length(app.objList(1)) == 3
+                    tableObj.Data(i,:) = [paramObj.appName(i), paramObj.approach{i,1}, sGrid, num2str(paramObj.pop(i)), num2str(paramObj.mr(i)), paramObj.alg{i,1}, "Wait", "0.0/0.0", "0.0/0.0", "0.0/0.0", "0", 0];
+                else
+                    tableObj.Data(i,:) = [paramObj.appName(i), paramObj.approach{i,1}, sGrid, num2str(paramObj.pop(i)), num2str(paramObj.mr(i)), paramObj.alg{i,1}, "Wait", "0.0/0.0", "0.0/0.0", "0", 0];
+                end
             end
             % Format parameters to save info
             app.paramsToSave = array2table(tableObj.Data(:,1:5));
-            app.paramsToSave.Properties.VariableNames(1:5) = utils.sTableHeader(1:5);
+            app.paramsToSave.Properties.VariableNames(1:5) = utils.sTableHeaderEL(1:5);
         end
         
         %% Retrieve the encoding value according to the selected option in @option
-        function encoding = getEncodingTable(option)
+        function encoding = getEncodingTable(objList, option)
+            is_3_obj = length(objList) == 3;
+
             switch option
                 case 'input'
                     encoding = 1;
-                case 'grid'
+                case 'approach'
                     encoding = 2;
-                case 'pop'
+                case 'grid'
                     encoding = 3;
-                case 'mr'
+                case 'pop'
                     encoding = 4;
-                case 'alg'
+                case 'mr'
                     encoding = 5;
-                case 'status'
+                case 'alg'
                     encoding = 6;
-                case 'e'
+                case 'status'
                     encoding = 7;
-                case 'lb'
+                case 'E'
                     encoding = 8;
-                case 'ttot'
+                case 'LB'
                     encoding = 9;
+                case 'FT'
+                    if is_3_obj
+                        encoding = 10;
+                    else
+                        encoding = 9;
+                    end
+                case 'ttot'
+                    if is_3_obj
+                        encoding = 11;
+                    else
+                        encoding = 10;
+                    end
                 case 'select'
-                    encoding = 10;
+                    if is_3_obj
+                        encoding = 12;
+                    else
+                        encoding = 11;
+                    end
                 otherwise
                     encoding = 0;
             end
@@ -450,10 +533,10 @@ classdef utils
         % @i            Row index to be updated
         % @field        Field name of the row @i
         % @val          The new value to update
-        function [] = updateTableByField(table, i, field, val)
-            idx = utils.getEncodingTable(field);
+        function [] = updateTableByField(app, i, field, val)
+            idx = utils.getEncodingTable(app.objList, field);
             if idx > 0
-                table.Data(i,idx) = val;
+                app.UITable.Data(i,idx) = val;
             else
                 utils.log(['WARNING! Index ' field ' not found in the UITable']);
             end
@@ -464,10 +547,10 @@ classdef utils
         % @i            Row index to be retrieved
         % @field        Field name of the row @i
         % @val          The value retrieved
-        function val = getValueTableByField(table, i, field)
-            idx = utils.getEncodingTable(field);
+        function val = getValueTableByField(app, i, field)
+            idx = utils.getEncodingTable(app.objList, field);
             if idx > 0
-                val = table.Data(i,idx);
+                val = app.UITable.Data(i,idx);
             else
                 val = 0;
                 utils.log(['WARNING! Index ' field ' not found in the UITable']);
@@ -509,17 +592,142 @@ classdef utils
                 for j=1:lP
                     objectiveStatistics{i,j} = app.paramsToSave{i,j};
                 end
-                objectiveStatistics{i,j+1} = batch_results{i,1}.mean_energy;
-                objectiveStatistics{i,j+2} = batch_results{i,1}.std_energy;
-                objectiveStatistics{i,j+3} = batch_results{i,1}.mean_loadbalance;
-                objectiveStatistics{i,j+4} = batch_results{i,1}.std_loadbalance;
-                objectiveStatistics{i,j+5} = batch_results{i,1}.mean_ttot;
+                objectiveStatistics{i,j+1} = batch_results{i,1}.mean_obj1;
+                objectiveStatistics{i,j+2} = batch_results{i,1}.std_obj1;
+                objectiveStatistics{i,j+3} = batch_results{i,1}.mean_obj2;
+                objectiveStatistics{i,j+4} = batch_results{i,1}.std_obj2;
+                if length(app.objList) == 3
+                    objectiveStatistics{i,j+5} = batch_results{i,1}.mean_obj3;
+                    objectiveStatistics{i,j+6} = batch_results{i,1}.std_obj3;
+                    objectiveStatistics{i,j+7} = batch_results{i,1}.mean_ttot;
+                else
+                    objectiveStatistics{i,j+5} = batch_results{i,1}.mean_ttot;
+                end
             end
             
             % Save parameters info to a CSV file
             writetable(app.paramsToSave, strcat(sReportFolder,'/params'));
             writecell(objectiveStatistics, strcat(sReportFolder,'/statistics.csv'));
             utils.log(['Results saved in: ' sReportFolder]);
+        end
+
+        %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+        %                          PlatEMO Calls                          %
+        %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+        %% Approaches Selector
+        function [dec, obj] = callApproachByOption(app, option, params)
+
+            % Add restriction numTasks <= numProc
+            switch option
+                case 'Multi-Application'
+                    [dec, obj] = utils.callMultiApplicationProblem(app, params);
+                case 'Simulated Annealing'
+                    % Missing @SAPerm Problem
+                    [dec, obj] = utils.callSimulatedAnnealingProblem(app, params);
+                case 'Multi-Phase'
+                    [dec, obj] = utils.callMultiPhaseProblem(app, params);
+                case 'Condor'
+                    % Index exceeds the number of array elements. Index must not exceed 0.
+                    [dec, obj] = utils.callCondorProblem(app, params);
+                otherwise
+                    [dec, obj] = utils.callMultiApplicationProblem(app, params);
+            end
+        end
+
+        %% Multi-Application Approach
+        function [dec, obj] = callMultiApplicationProblem(app, params)
+            func = str2func(params{1,1});
+            maxFE = params{1,13};
+            if strcmp(app.applicationMode,'MULTI') || strcmp(app.applicationModeBatch,'MULTI')
+                [nT, s, t, w] = utils.concatApps(app);
+                p = params(1,2:12);
+                p{1,1} = sum(nT);
+                p{1,6} = s;
+                p{1,7} = t;
+                p{1,8} = w;
+            else
+                p = params(1,2:12);
+                p{1,1} = sum(params(1,2));
+            end
+            [dec, obj] = platemo('problem', @ManyCoreMAV1, 'algorithm', func, 'maxFE', maxFE, 'parameter', p, 'save', 0);
+        end
+
+        %% Simulated Annealing Approach
+        function [dec, obj] = callSimulatedAnnealingProblem(app, params)
+
+            nRow = params{1,3};
+            nColumn = params{1,4};
+            [nTasks, S, T, W] = utils.concatApps(app);
+
+            encode = 5 * ones(1, sum(nTasks));
+            lowerLimit = 1;
+            upperLimit = nRow * nColumn * 3;
+            f = @(x) MCCustoSA([nRow, nColumn], S, T, W, sum(nTasks), x);
+
+            [dec, obj] = platemo('objFcn', f, 'algorithm', @SAPermut, 'maxFE', params{1,13}, 'encoding', encode, 'lower', lowerLimit, 'upper', upperLimit, 'parameter', nRow*nColumn, 'save', 0);
+        end
+
+        %% Multi-Phase Approach
+        function [dec, obj] = callMultiPhaseProblem(app, params)
+            nTasks = params{1,2};
+            nRow = params{1,3};
+            nColumn = params{1,4};
+            popSize = params{1,5};
+
+            nApps = length(app.applications);
+            a = cell(1,nApps);
+
+            for i=1:nApps
+                a{i} = [app.applications(i).sourceIds; app.applications(i).targetIds; app.applications(i).weights];
+            end
+
+            AreaOK = 0;
+            while AreaOK == 0
+                
+                [resultObj, resultCusto, squareAreaTotal] = DistriAreaV2(a);
+                
+                for i=1:nApps
+                    custoTag1 = cell2mat(resultCusto(1,i,:));
+                    posicaoAux = find(custoTag1 == min(custoTag1),1);
+                    auxiliarArea = cell2mat(squareAreaTotal(1,i));
+                    areasMelhor(:,i) = auxiliarArea(1:end,posicaoAux);
+                    auxiliarMap = cell2mat(resultObj(1,i));
+                    z = auxiliarMap(posicaoAux, 1:end);                    
+                    mapMelhor{i} = num2cell(z);
+                    custoMelhor{i} = num2cell(custoTag1(posicaoAux, 1:end));
+                end
+                AreaOK = 1;
+                if sum(areasMelhor(1,:) .* areasMelhor(2,:)) > (nRow * nColumn)
+                    AreaOK = 0;
+                end
+            end
+            
+            encode = [ones(1,nApps) * 5, ones(1,nApps-1) * 2];
+            lower = ones(1, (2 * nApps) - 1);
+            upper = [ones(1, nApps) * nApps, ones(1,nApps-1) * 2];
+
+            f = @(x) MeuCustoSAV2(areasMelhor, [nRow nColumn], x);
+
+            [dec, obj] = platemo('objFcn', f, 'algorithm', @SA, 'maxFE', params{1,13}, 'encoding', encode, 'lower', lower, 'upper', upper, 'save', 0);
+        end
+        
+        %% Condor Approach
+        function [dec, obj] = callCondorProblem(app, params)
+            rDP = 0.5;   % pct da pop que vai sofrer mutação
+            rPC = 0.05;  % quanto incrementa/decrementa DP ao longo das gen
+            inferiorDP = 0.1;
+            superiorDP = 0.9;
+            
+            nTasks = params{1,2};
+            nRow = params{1,3};
+            nColumn = params{1,4};
+            popSize = params{1,5};
+            S = params{1,7};
+            T = params{1,8};
+            W = params{1,9};
+            maxFE = params{1,13};
+            
+            [dec, obj] = algoACA(popSize,20, inferiorDP, superiorDP, rDP, rPC, nRow, nColumn, S, T, W);
         end
 
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%

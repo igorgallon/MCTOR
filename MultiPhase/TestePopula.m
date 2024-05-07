@@ -48,7 +48,7 @@ end
 f1 = @(x)MeuCustoSA(areasMelhor, numnNoc, [x(1) x(2) x(3) x(4) x(5) x(6) x(7)]);
 %[x(1) x(2) x(3) x(4) x(5) x(6) x(7)]
 % Sendo que tem quatro aplicações neste exemplo
-% as variáveis de x(1) até x(2) representa a sequencia de aplicações
+% as variáveis de x(1) até x(4) representa a sequencia de aplicações
 % a primeira aplicação sempre vai ser alocada no NoC na posição mais a
 % esquerda e inferior
 % as variáveis x(5) até x(7) representa a posição relativa direita ou

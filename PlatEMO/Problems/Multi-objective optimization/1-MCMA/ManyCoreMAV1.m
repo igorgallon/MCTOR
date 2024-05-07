@@ -12,8 +12,6 @@ classdef ManyCoreMAV1 < PROBLEM
 % enc --- 6 --- Encoding type
 % algVar --- 0 --- Algorithm Variation
 % mutRate --- 0.01 --- Mutation Rate
-% probType --- "Default" --- Problem types: Default, MultiArea
-% SimulatedAnnealing
 
 %------------------------------- Reference --------------------------------
 % Created by Manoel Aranda de Almeida 25/05/2023
@@ -32,24 +30,17 @@ classdef ManyCoreMAV1 < PROBLEM
         enc = 6;
         algVar = 0;
         mutRate = 0.01;
-        probType = "Default";
         evalCnt = 0;
     end
     methods
         %% Default settings of the problem
         function Setting(obj)
-            [obj.nTask,obj.nRow,obj.nColumn,obj.popSize,obj.objList,obj.S,obj.T,obj.W,obj.enc,obj.algVar,obj.mutRate, obj.probType]= obj.ParameterSet(2); 
+            [obj.nTask,obj.nRow,obj.nColumn,obj.popSize,obj.objList,obj.S,obj.T,obj.W,obj.enc,obj.algVar,obj.mutRate]= obj.ParameterSet(2); 
             if isempty(obj.D); obj.D = obj.nTask; end  %Numero de variaveis
             obj.N = obj.popSize;    %Population size
             obj.M = length(obj.objList);    %Number of objectives
             obj.lower    = zeros(1,obj.D);
             obj.upper    = 1000*ones(1,obj.D);
-            
-            if obj.probType == "MultiArea"
-                obj.enc = 9;
-            elseif obj.probType == "SimulatedAnnealing"
-                obj.enc = 5;
-            end
             obj.encoding = obj.enc*ones(1,obj.D);  %Tipo de operador
         end
         
@@ -64,9 +55,9 @@ classdef ManyCoreMAV1 < PROBLEM
         
         %% Calculate objective values
         function PopObj = CalObj(obj, PopDec)
-            
-            
+
             PopObj = MCMACustoV2(PopDec, obj.S, obj.T, obj.W, obj.nRow, obj.nColumn, obj.objList);
+            
             obj.evalCnt = obj.evalCnt + 1;
 
             if obj.evalCnt == 50000

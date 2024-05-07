@@ -16,7 +16,11 @@ for s=1:L
         %Dist = diag(Dist);
         %Dist = Dist';
     end
-cost(s,:)  = Dist(s,:) .* P;
+    
+
+        cost(s,:)  = Dist(s,:) .* P;
+
+
 end
 
 %Calculo de Load Balance

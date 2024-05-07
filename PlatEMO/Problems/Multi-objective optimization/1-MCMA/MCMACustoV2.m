@@ -22,11 +22,15 @@ function costResult = MCMACustoV2(Pop, S, T, P, nR, nC, objectivesList)
         cost = zeros(L,length(S));
         for s = 1:L
             for x = 1:length(S)
-                Dist(s,x) = Dist_Tab(sProc(s,x), tProc(s,x));
+                try
+                    Dist(s,x) = Dist_Tab(sProc(s,x), tProc(s,x));
+                catch
+                    disp('err');
+                end
             end
             cost(s,:) = Dist(s,:) .* P;
         end
-        costCommunication = sum(cost, 2);
+        costCommunication = sum(cost, 2) + 1;
 
         % Concatenate the results
         costResult = [costCommunication];
@@ -49,6 +53,9 @@ function costResult = MCMACustoV2(Pop, S, T, P, nR, nC, objectivesList)
         costFaultTolerance = zeros(L,1);
         for i = 1:L
             ft = FaultToleranceCost(Pop(i,:), nR, nC);
+            if isnan(ft)
+                disp('ERROR');
+            end
             try
                 costFaultTolerance(i,:) = ft;
             catch Exception

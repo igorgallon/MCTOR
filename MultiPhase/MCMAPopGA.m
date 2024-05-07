@@ -1,3 +1,4 @@
+
 function MinhaPopOut = MCMAPopGA(Npop, Tarefas, NumNoc)
 %------------------------------- Reference --------------------------------
 % Created by Manoel Aranda de Almeida 25/05/2023

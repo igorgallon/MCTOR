@@ -1,12 +1,10 @@
-function [aptidaoAreaTotal custoAreaTotal squareAreaTotal] = DistriArea(varargin)
-%UNTITLED
+function [aptidaoAreaTotal, custoAreaTotal, squareAreaTotal] = DistriAreaV2(apps)
 
-    numMatrizes = numel(varargin);
-%     squareAreaTotal = cell(2,2);
-%     custoAreaTotal = cell(2,2);
-    
+    numMatrizes = length(apps);
+
     for i = 1:numMatrizes
-        matrizAtual = varargin{i};
+
+        matrizAtual = apps{i};
         
         % Mostra Matriz
         %disp(['Matriz ' num2str(i) ' tem tamanho ' num2str(size(matrizAtual))]);
@@ -18,17 +16,16 @@ function [aptidaoAreaTotal custoAreaTotal squareAreaTotal] = DistriArea(varargin
         T = matrizAtual(2,:);
         W = matrizAtual(3,:);
         aptidaoArea = zeros(length(squareArea),numeroTarefas);
+        custoArea = [];
         
-        for j = 1 : length(squareArea)
-            [aptidaoArea(j,:) custoArea(j,:)]= OtimAreaGA(squareArea(:,j) ,matrizAtual, numeroTarefas);
+        for j = 1:length(squareArea)
+            [aptidaoArea(j,:), custoArea(j,:)]= OtimAreaGA(squareArea(:,j) ,matrizAtual, numeroTarefas);
         end
+        
         squareAreaTotal{i} = squareArea;
         aptidaoAreaTotal{i}= aptidaoArea;
         custoAreaTotal{i} = custoArea;
     end
-    
-%     aptidaoArea = squareAreaTotal;
-%     melhorCusto = custoAreaTotal;
 end
 
 function [squareArea] = fatoracaoEmDois(LimiteX, LimiteY, numeroTask)
@@ -38,5 +35,4 @@ function [squareArea] = fatoracaoEmDois(LimiteX, LimiteY, numeroTask)
     tamanhosTotai = prod(matrizCombinar,1);
     position = find(tamanhosTotai >= numeroTask);
     squareArea = matrizCombinar(:,position);
-    return
 end

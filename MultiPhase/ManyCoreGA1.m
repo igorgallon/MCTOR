@@ -1,4 +1,3 @@
-
 classdef ManyCoreGA1 < PROBLEM
 % <multi> <integer> <large/none>
 % Many Core Otimization
@@ -30,7 +29,7 @@ classdef ManyCoreGA1 < PROBLEM
             if isempty(obj.M); obj.M = 1; end  %Numero de objetivos
             if isempty(obj.D); obj.D = obj.nTask; end  %Numero de variaveis
             obj.lower    = zeros(1,obj.D);
-            obj.upper    = 1000*ones(1,obj.D);
+            obj.upper    = obj.Line*obj.Column*ones(1,obj.D);
             obj.encoding = 9*ones(1,obj.D);  %Tipo de operador
 
         end

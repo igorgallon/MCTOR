@@ -42,15 +42,29 @@ for j = 1:numel(result)
                 auxiliarCore(linhalivre(posicao):linhalivre(posicao)+auxiliarArea(1,result(j))-1,colunalivre(posicao):colunalivre(posicao)+auxiliarArea(2,result(j))-1)=result(j);
                 else
                     auxiliarDiag = find(diag(auxiliarCore)==0);
+                    if numel(auxiliarDiag) < 2 || isempty(find(linhalivre==auxiliarDiag(1),1))
+                        [linha, coluna] = size(auxiliarCore);
+                        resultCusto = linha * coluna * 100;
+                        break
+                    end
                     posicao = find(linhalivre==auxiliarDiag(1),1);
                     auxiliarCusto = SobreposSA(auxiliarCore, auxiliarArea(:,result(j)),[linhalivre(posicao) colunalivre(posicao)]);
                     if auxiliarCusto == false
                         auxiliarCore(linhalivre(posicao):linhalivre(posicao)+auxiliarArea(1,result(j))-1,colunalivre(posicao):colunalivre(posicao)+auxiliarArea(2,result(j))-1)=result(j);
                     else
+                        if numel(auxiliarDiag) < 3 || isempty(find(linhalivre==auxiliarDiag(1),1))
+                            [linha, coluna] = size(auxiliarCore);
+                            resultCusto = linha * coluna * 100;
+                            break
+                        end
                         posicao = find(linhalivre==auxiliarDiag(2),1);
                         auxiliarCusto = SobreposSA(auxiliarCore, auxiliarArea(:,result(j)),[linhalivre(posicao) colunalivre(posicao)]);
                         if auxiliarCusto == false
                             auxiliarCore(linhalivre(posicao):linhalivre(posicao)+auxiliarArea(1,result(j))-1,colunalivre(posicao):colunalivre(posicao)+auxiliarArea(2,result(j))-1)=result(j);
+                        else
+                            [linha, coluna] = size(auxiliarCore);
+                            resultCusto = linha * coluna * 100;
+                            break
                         end
                     end
                 end
@@ -61,12 +75,22 @@ for j = 1:numel(result)
                     auxiliarCore(linhalivre(posicao):linhalivre(posicao)+auxiliarArea(1,result(j))-1,colunalivre(posicao):colunalivre(posicao)+auxiliarArea(2,result(j))-1)=result(j);
                 else                    
                     auxiliarDiag = find(diag(auxiliarCore)==0);
+                    if numel(auxiliarDiag) < 2 || isempty(find(linhalivre==auxiliarDiag(1),1))
+                        [linha, coluna] = size(auxiliarCore);
+                        resultCusto = linha * coluna * 100;
+                        break
+                    end
                     posicao = find(colunalivre==auxiliarDiag(1),1);
                     auxiliarCusto = SobreposSA(auxiliarCore, auxiliarArea(:,result(j)),[linhalivre(posicao) colunalivre(posicao)]);
                     if auxiliarCusto == false
                         auxiliarCore(linhalivre(posicao):linhalivre(posicao)+auxiliarArea(1,result(j))-1,colunalivre(posicao):colunalivre(posicao)+auxiliarArea(2,result(j))-1)=result(j);
                     else
                         posicao = find(colunalivre==auxiliarDiag(2),1);
+                        if numel(auxiliarDiag) < 3 || isempty(find(linhalivre==auxiliarDiag(1),1))
+                            [linha, coluna] = size(auxiliarCore);
+                            resultCusto = linha * coluna * 100;
+                            break
+                        end
                         auxiliarCusto = SobreposSA(auxiliarCore, auxiliarArea(:,result(j)),[linhalivre(posicao) colunalivre(posicao)]);
                         if auxiliarCusto == false
                             auxiliarCore(linhalivre(posicao):linhalivre(posicao)+auxiliarArea(1,result(j))-1,colunalivre(posicao):colunalivre(posicao)+auxiliarArea(2,result(j))-1)=result(j);
@@ -88,6 +112,7 @@ end
     
 for k=1:(((numel(result)-1)/2)+1)
     if isempty(find(auxiliarCore==k))
+        [linha, coluna] = size(auxiliarCore);
         resultCusto = linha * coluna * 100;
     end
 end

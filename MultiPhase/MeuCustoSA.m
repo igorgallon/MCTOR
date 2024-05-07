@@ -37,9 +37,12 @@ end
 
 load 'cellCost_Salva.mat' cellCost;
 resultCost = auxiliarCusto;
-bestresult = cellCost{1}(2);
+bestresult = cell2mat(cellCost{1}(2));
+if bestresult == 0
+    bestresult = auxiliarDim(1) * auxiliarDim(2) * 100;
+end
 
-if resultCost <= cell2mat(bestresult)
+if resultCost <= bestresult
     cellCost{1} = {result auxiliarCusto auxiliarCore};
     save('cellCost_Salva.mat', 'cellCost');
 end
