@@ -398,7 +398,8 @@ classdef utils
             g = app.g;
             r = app.numRows;
             c = app.numColumns;
-            t = app.applications(1).numTasks;
+            [t, ~, ~, ~] = utils.concatApps(app);
+            % t = app.applications(1).numTasks;
             % Draw the chromosome solution
             utils.drawSolution(g, r, c, t, chromosomeSelected, idx, false);
             
@@ -478,8 +479,8 @@ classdef utils
                 end
             end
             % Format parameters to save info
-            app.paramsToSave = array2table(tableObj.Data(:,1:5));
-            app.paramsToSave.Properties.VariableNames(1:5) = utils.sTableHeaderEL(1:5);
+            app.paramsToSave = array2table(tableObj.Data(:,1:6));
+            app.paramsToSave.Properties.VariableNames(1:6) = utils.sTableHeaderEL(1:6);
         end
         
         %% Retrieve the encoding value according to the selected option in @option
