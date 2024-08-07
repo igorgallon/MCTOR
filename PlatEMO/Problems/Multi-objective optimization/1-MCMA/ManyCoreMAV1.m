@@ -48,7 +48,7 @@ classdef ManyCoreMAV1 < PROBLEM
         function Population = Initialization(obj, N)
             if nargin < 2; N = obj.N; end
 
-            PopDec = MCMAPopInit(N, obj.nTask, obj.nRow, obj.nColumn, obj.algVar);
+            PopDec = MCMAPopInitV2(N, obj.nTask, obj.nRow, obj.nColumn, obj.algVar);
 
             Population = obj.Evaluation(PopDec);
         end

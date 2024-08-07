@@ -26,66 +26,65 @@ TAG4 = [S4; T4; W4];
 numeroApp = 4; %entrar com a quantidade de aplicações
 numnNoc  = [9 9]; %tamanho do Noc
 
+mapMelhor = {1,numeroApp};
+
 tic;
-for j=61:61 
-    AreaOK = 0;
-    while AreaOK == 0
+AreaOK = 0;
+while AreaOK == 0
+    
+    [resultObj resultCusto squareAreaTotal] = DistriArea(TAG1, TAG2, TAG3, TAG4);
+    
+    for i=1:numeroApp
+        custoTag1 = cell2mat(resultCusto(1,i,:));
+        posicaoAux = find(custoTag1 == min(custoTag1),1);
+        auxiliarArea = cell2mat(squareAreaTotal(1,i));
+        areasMelhor(:,i) = auxiliarArea(1:end,posicaoAux);
         
-        [resultObj resultCusto squareAreaTotal] = DistriArea(TAG1, TAG2, TAG3, TAG4);
+        auxiliarMap = cell2mat(resultObj(1,i));
+    
+        z = auxiliarMap(posicaoAux, 1:end);
+    %     if ~isempty (find(z > (areasMelhor(1,i)*areasMelhor(2,i))))
+    %         find(z > (areasMelhor(1,i)*areasMelhor(2,i)))
+    %     end
         
-        for i=1:numeroApp
-            custoTag1 = cell2mat(resultCusto(1,i,:));
-            posicaoAux = find(custoTag1 == min(custoTag1),1);
-            auxiliarArea = cell2mat(squareAreaTotal(1,i));
-            areasMelhor(:,i) = auxiliarArea(1:end,posicaoAux);
-            
-            auxiliarMap = cell2mat(resultObj(1,i));
-        
-            z = auxiliarMap(posicaoAux, 1:end);
-        %     if ~isempty (find(z > (areasMelhor(1,i)*areasMelhor(2,i))))
-        %         find(z > (areasMelhor(1,i)*areasMelhor(2,i)))
-        %     end
-            
-            mapMelhor{i} = num2cell(z);
-            custoMelhor{i} = num2cell(custoTag1(posicaoAux, 1:end));
-        end
-        
-        AreaOK = 1;
-        if sum(areasMelhor(1,:) .* areasMelhor(2,:)) > (numnNoc(1) * numnNoc(2))
-            AreaOK = 0;
-        end
+        mapMelhor{i} = num2cell(z);
+        custoMelhor{i} = num2cell(custoTag1(posicaoAux, 1:end));
     end
-     meuEncode = [5, 5, 5, 5, 2, 2, 2]; % len = [numApps{enc5}; numApps-1{enc2}]
-    % 
- [len]{1}
-    % upper [numApps{max(numApps)}; numApps-1{2}]
     
-    %f1 = @(x)custoTag1(x(1),1) + custoTag2(x(2),1);
-    %f1 = @(x)MeuCustoSA(custoTag1(x(1),1),custoTag2(x(2),1));
-    f1 = @(x)MeuCustoSA(areasMelhor, numnNoc, [x(1) x(2) x(3) x(4) x(5) x(6) x(7)]);
-    %[x(1) x(2) x(3) x(4) x(5) x(6) x(7)]
-    % Sendo que tem quatro aplicações neste exemplo
-    % as variáveis de x(1) até x(4) representa a sequencia de aplicações
-    % a primeira aplicação sempre vai ser alocada no NoC na posição mais a
-    % esquerda e inferior
-    % as variáveis x(5) até x(7) representa a posição relativa direita ou
-    % esquerda, sendo que x(5) é a posição referente a x(2), x(6) para x(2),
-    % assim por diante
-    
-    load 'cellCost_Salva.mat' cellCost;
-    cellCost =[];
-    
-    [s1 s2 s3] = platemo('objFcn',f1,'algorithm',@SA,'encoding',meuEncode,'lower',[1, 1, 1, 1, 1, 1, 1],'upper',[4, 4, 4, 4, 2, 2, 2]);
-    load 'cellCost_Salva.mat' cellCost;
-    TesteSA{j} = cellCost{1};
-    MapApp{j} = mapMelhor;
-    AreasApp{j} = areasMelhor;
-    CustoApp{j} = custoMelhor;
-    save('TesteSA.mat', 'TesteSA');
-    save('MapApp.mat', 'MapApp');
-    save('AreasApp.mat', 'AreasApp');
-    save('CustoApp.mat', 'CustoApp');
+    AreaOK = 1;
+    if sum(areasMelhor(1,:) .* areasMelhor(2,:)) > (numnNoc(1) * numnNoc(2))
+        AreaOK = 0;
+    end
 end
+meuEncode = [5, 5, 5, 5, 2, 2, 2]; % len = [numApps{enc5}; numApps-1{enc2}]
+
+% upper [numApps{max(numApps)}; numApps-1{2}]
+
+%f1 = @(x)custoTag1(x(1),1) + custoTag2(x(2),1);
+%f1 = @(x)MeuCustoSA(custoTag1(x(1),1),custoTag2(x(2),1));
+f1 = @(x)MeuCustoSA(areasMelhor, numnNoc, [x(1) x(2) x(3) x(4) x(5) x(6) x(7)]);
+%[x(1) x(2) x(3) x(4) x(5) x(6) x(7)]
+% Sendo que tem quatro aplicações neste exemplo
+% as variáveis de x(1) até x(4) representa a sequencia de aplicações
+% a primeira aplicação sempre vai ser alocada no NoC na posição mais a
+% esquerda e inferior
+% as variáveis x(5) até x(7) representa a posição relativa direita ou
+% esquerda, sendo que x(5) é a posição referente a x(2), x(6) para x(2),
+% assim por diante
+
+% load 'cellCost_Salva.mat' cellCost;
+% cellCost =[];
+
+[s1, s2, s3] = platemo('objFcn',f1,'algorithm',@SA,'encoding',meuEncode,'lower',[1, 1, 1, 1, 1, 1, 1],'upper',[4, 4, 4, 4, 2, 2, 2]);
+load 'cellCost_Salva.mat' cellCost;
+TesteSA{j} = cellCost{1};
+MapApp{j} = mapMelhor;
+AreasApp{j} = areasMelhor;
+CustoApp{j} = custoMelhor;
+save('TesteSA.mat', 'TesteSA');
+save('MapApp.mat', 'MapApp');
+save('AreasApp.mat', 'AreasApp');
+save('CustoApp.mat', 'CustoApp');
 
 disp('Executado!');
 disp(['Tempo decorrido: ', num2str(toc), ' segundos']);

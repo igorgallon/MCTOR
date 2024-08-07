@@ -30,7 +30,7 @@ classdef ManyCoreGA1 < PROBLEM
             if isempty(obj.D); obj.D = obj.nTask; end  %Numero de variaveis
             obj.lower    = zeros(1,obj.D);
             obj.upper    = obj.Line*obj.Column*ones(1,obj.D);
-            obj.encoding = 9*ones(1,obj.D);  %Tipo de operador
+            obj.encoding = 7*ones(1,obj.D);  %Tipo de operador
 
         end
         
@@ -63,30 +63,13 @@ classdef ManyCoreGA1 < PROBLEM
             Pos_Tab=[LN' CL'];
             % Cria uma tabela de distancias
             Dist_Tab=pdist2(Pos_Tab,Pos_Tab,'cityblock');
-
-            g= MCMACusto(PopDec, Dist_Tab, nR*nC, S, T, P,nR, nC);
+            
+            % g= MCMACusto(PopDec, Dist_Tab, nR*nC, S, T, P,nR, nC);
             g1= MCMACustoGA(PopDec, Dist_Tab, nR*nC, S, T, P,nR, nC);
             
             PopObj = g1;
 
         end
-%         %% Generate points on the Pareto front
-%         function R = GetOptimum(obj,N)
-%             R = UniformPoint(N,obj.M);
-%             R = R./repmat(sqrt(sum(R.^2,2)),1,obj.M);
-%         end
-%         %% Generate the image of Pareto front
-%  %       function R = GetPF(obj)
-%             if obj.M == 2
-%  %               R = obj.GetOptimum(100);
-%  %           elseif obj.M == 3
-%                 a = linspace(0,pi/2,10)';
-%                 R = {sin(a)*cos(a'),sin(a)*sin(a'),cos(a)*ones(size(a'))};
-%             else
-%                 R = [];
-%             end
-%         end
-
     end
 end
 

@@ -26,6 +26,10 @@ classdef utils
         OBJ_LOADBALANCE = "LB";
 
         %% Batch table parameters constants
+        nTableNumColsE = 10;
+        sTableHeaderE = {'Input'; 'Approach'; 'Grid'; 'Pop.Size'; 'Mut.Rt.'; 'Algorithm'; 'Status'; 'Energy(Avg/Std)'; 'TTot'; 'Select'};
+        sColumnFormatE = {'char', 'char','char','char','char','char','char','char','char','logical'};
+        sColumnEditableE = [false false false false false false false false false true];
         nTableNumColsEL = 11;
         sTableHeaderEL = {'Input'; 'Approach'; 'Grid'; 'Pop.Size'; 'Mut.Rt.'; 'Algorithm'; 'Status'; 'Energy(Avg/Std)'; 'LoadBal.(Avg/Std)'; 'TTot'; 'Select'};
         sColumnFormatEL = {'char', 'char','char','char','char','char','char','char','char','char','logical'};
@@ -69,6 +73,12 @@ classdef utils
             id = vid;
         end
 
+        function val = is_multi(app)
+            single = strcmp(app.applicationMode, 'MULTI') == 1;
+            batch = strcmp(app.applicationModeBatch,'MULTI') == 1;
+            val = (single || batch);
+        end
+
         %% Calculate the total time of the grid mapping based on the original
         % graph
         function tTot = getTotalTime(ind, r, c, s, t, w)
@@ -99,20 +109,32 @@ classdef utils
             coord = [x;y]';
         end
 
-        %% Find the best solution by finding the shortest euclidian distance
-        % between the pair (x,y) and the Pareto-Front origin (0,0)
+        %% Find the best solution
         function b = getBestSolution(dec, obj)
-            x = obj;
-            y = zeros(height(obj), 2);
-            % Calculate the euclidean distance
-            d = pdist2(x, y);
-            % Find the shortest distance
-            [min_dist, idx] = min(d(:,1));
-            % Save the best solution
-            b.index = idx;
-            b.all_best_index = find(d(:,1) == min_dist);
-            b.best_result = obj(idx,:);
-            b.best_solution = dec(idx,:);
+            numObjectives = size(obj,2);
+            if numObjectives > 1
+                % Get the best by finding the shortest euclidian distance
+                % between the pair (x,y) and the Pareto-Front origin (0,0)
+                x = obj;
+                y = zeros(height(obj), numObjectives);
+                % Calculate the euclidean distance
+                d = pdist2(x, y);
+                % Find the shortest distance
+                [min_dist, idx] = min(d(:,1));
+                % Save the best solution
+                b.index = idx;
+                b.all_best_index = find(d(:,1) == min_dist);
+                b.best_result = obj(idx,:);
+                b.best_solution = dec(idx,:);
+            else
+                % Get the best by finding the minimal value
+                [min_value, idx] = min(obj);
+                % Save the best solution
+                b.index = idx;
+                b.all_best_index = find(obj == min_value);
+                b.best_result = obj(idx,:);
+                b.best_solution = dec(idx,:);
+            end
         end
 
         %% Adjust the limits of the graph according to the x and y axis
@@ -130,11 +152,12 @@ classdef utils
         
         %% Normalize a given array by the maximum element
         function n = norm(a)
-            if a ~= 0
-                n = a / max(a);
-            else
-                n = a;
-            end
+            % if a ~= 0
+            %     n = a / max(a);
+            % else
+            %     n = a;
+            % end
+            n = a;
         end
 
         %% Collects the solution parameters (objective values and chromosome) and 
@@ -143,10 +166,25 @@ classdef utils
         % @obj      Objective for each individual of the Solution
         % @con      Constraints violation
         function p = structureSolution(dec, obj)
-            p.x_axis = utils.norm(obj(:,1));
-            p.y_axis = utils.norm(obj(:,2));
+            numObjectives = size(obj,2);
+            switch numObjectives
+                case 1
+                    p.x_axis = 1:size(dec,1);
+                    p.y_axis = utils.norm(obj(:,1));
+                    axis = [p.y_axis];
+                case 2
+                    p.x_axis = utils.norm(obj(:,1));
+                    p.y_axis = utils.norm(obj(:,2));
+                    axis = [p.x_axis p.y_axis];
+                case 3
+                    p.x_axis = utils.norm(obj(:,1));
+                    p.y_axis = utils.norm(obj(:,2));
+                    p.z_axis = utils.norm(obj(:,3));
+                    axis = [p.x_axis p.y_axis p.z_axis];
+            end
+            p.numObjectives = numObjectives;
             p.chromosomes = dec;
-            p.best = utils.getBestSolution(dec, [p.x_axis p.y_axis]);
+            p.best = utils.getBestSolution(dec, axis);
         end
 
         function [n, s, t, w] = concatApps(app)
@@ -179,32 +217,64 @@ classdef utils
         end
 
         %% Collect statistics from batch results
-        function [mean_1, std_1, mean_2, std_2, mean_3, std_3, ttot] = getStatistics(objList, results, results_ttot)
+        function stats = getStatistics(objList, results, results_ttot)
+            
+            numObjectives = length(objList);
+
             r_1 = results(:,1);
-            norm_1 = (r_1 - min(r_1))/(max(r_1) - min(r_1));
-            mean_1 = mean(norm_1);
-            std_1 = std(r_1);
-            
-            r_2 = results(:,2);
-            % norm_2 = (r_2 - min(r_2))/(max(r_2) - min(r_2));
-            mean_2 = mean(r_2);
-            std_2 = std(r_2);
-            
-            ttot = mean(results_ttot);
+            % if min(r_1) == max(r_1)
+            %     norm_1 = r_1;
+            % else
+            %     norm_1 = (r_1 - min(r_1))/(max(r_1) - min(r_1));
+            % end
+            norm_1 = r_1;
+            stats.mean_1 = mean(norm_1);
+            stats.std_1 = std(norm_1);
+            stats.min_1 = min(norm_1);
+            stats.max_1 = max(norm_1);
+            quant = quantile(norm_1, [0.25 0.75]);
+            stats.q1_1 = quant(1);
+            stats.q3_1 = quant(2);
 
-            if ~isfinite(mean_2) || ~isfinite(std_2)
-                disp("Error");
+            stats.mean_2 = 0;
+            stats.std_2 = 0;
+            stats.min_2 = 0;
+            stats.max_2 = 0;
+            stats.q1_2 = 0;
+            stats.q3_2 = 0;
+            stats.mean_3 = 0;
+            stats.std_3 = 0;
+
+            if numObjectives >= 2
+                r_2 = results(:,2);
+                % norm_2 = (r_2 - min(r_2))/(max(r_2) - min(r_2));
+                stats.mean_2 = mean(r_2);
+                stats.std_2 = std(r_2);
+                stats.min_2 = min(r_2);
+                stats.max_2 = max(r_2);
+                quant = quantile(r_2, [0.25 0.75]);
+                stats.q1_2 = quant(1);
+                stats.q3_2 = quant(2);
+                
+                if ~isfinite(stats.mean_2) || ~isfinite(stats.std_2)
+                    disp("Error");
+                end
             end
-            
-            mean_3 = 0;
-            std_3 = 0;
 
-            if length(objList) == 3
+            if numObjectives == 3
                 r_3 = results(:,3);
                 % norm_3 = (r_3 - min(r_3))/(max(r_3) - min(r_3));
-                mean_3 = mean(r_3);
-                std_3 = std(r_3);
+                stats.mean_3 = mean(r_3);
+                stats.std_3 = std(r_3);
+                stats.min_3 = min(r_3);
+                stats.max_3 = max(r_3);
+                quant = quantile(r_3, [0.25 0.75]);
+                stats.q1_3 = quant(1);
+                stats.q3_3 = quant(2);
             end
+
+            stats.mean_ttot = mean(results_ttot);
+
         end
         
         %% Set the axis label string according to the selected objective
@@ -217,6 +287,8 @@ classdef utils
                     label = "Load Balance";
                 case utils.OBJ_FAULTTOLERANCE
                     label = "Fault Tolerance";
+                otherwise
+                    label = objective;
             end
 
             if axis == 'x'
@@ -231,6 +303,8 @@ classdef utils
         %% Retrieve the objectives value according to the selected option in DropDown
         function objectives = getObjectivesDropDown(option)
             switch option
+                case '1.E'
+                    objectives = [utils.OBJ_ENERGY];
                 case '2.E/LB'
                     objectives = [utils.OBJ_ENERGY, utils.OBJ_LOADBALANCE];
                 case '2.E/FT'
@@ -385,14 +459,31 @@ classdef utils
         % based on the (x,y) mouse cursor coordinates. Once the element is
         % found, the function draws the solution in the processors grid.
         function txt = displaySolutionTip(~, info, app)
-            x = info.Position(1);
-            y = info.Position(2);
             
-            % Get the chromosome selected based on x-y-coordinates
-            x_axis = app.solution.x_axis;
-            y_axis = app.solution.y_axis;
-            coordinates = [x_axis(:), y_axis(:)];
-            idx = find(ismember(coordinates, [x y], 'rows'), 1);
+            % Get the chromosome selected based on the x-y-coordinates
+            switch app.solution.numObjectives
+                case 1
+                    idx = info.Position(1);
+                case 2
+                    x = info.Position(1);
+                    y = info.Position(2);
+                    selected = [x y];
+                    x_axis = app.solution.x_axis;
+                    y_axis = app.solution.y_axis;
+                    coordinates = [x_axis(:), y_axis(:)];
+                    idx = find(ismember(coordinates, [x y], 'rows'), 1);
+                case 3
+                    x = info.Position(1);
+                    y = info.Position(2);
+                    z = info.Position(3);
+                    selected = [x y z];
+                    x_axis = app.solution.x_axis;
+                    y_axis = app.solution.y_axis;
+                    z_axis = app.solution.z_axis;
+                    coordinates = [x_axis(:), y_axis(:), z_axis(:)];
+                    idx = find(ismember(coordinates, [x y z], 'rows'), 1);
+            end
+            
             chromosomeSelected = app.solution.chromosomes(idx, :);
             
             g = app.g;
@@ -412,8 +503,13 @@ classdef utils
             addpath(genpath([pwd,'\thirdparty']))
 
             % Retrieve parameters
-            if strcmp(app.applicationMode,'MULTI') || strcmp(app.applicationModeBatch,'MULTI')
-                inputs = {'multi apps'};
+            app_name = '';
+
+            if strcmp(app.applicationModeBatch,'MULTI')
+                for i=1:length(app.inputListBatch)
+                    app_name = app.inputListBatch{1,i} + "," + app_name;
+                end
+                inputs = {app_name};
             else
                 inputs = app.inputListBatch;
             end
@@ -439,23 +535,34 @@ classdef utils
             paramObj.alg = cell(n,1);
             paramObj.approach = cell(n,1);
             
+            nObjectives = length(app.objList);
+
             % Set up Table
-            if app.objList(1) == utils.OBJ_ENERGY && app.objList(2) == utils.OBJ_LOADBALANCE
-                numCols = utils.nTableNumColsEL;
-                tableObj.ColumnName = utils.sTableHeaderEL;
-                tableObj.ColumnFormat = utils.sColumnFormatEL;
-                tableObj.ColumnEditable = utils.sColumnEditableEL;
-            elseif app.objList(1) == utils.OBJ_ENERGY && app.objList(2) == utils.OBJ_FAULTTOLERANCE
-                numCols = utils.nTableNumColsEF;
-                tableObj.ColumnName = utils.sTableHeaderEF;
-                tableObj.ColumnFormat = utils.sColumnFormatEF;
-                tableObj.ColumnEditable = utils.sColumnEditableEF;
-            else
-                numCols = utils.nTableNumColsELF;
-                tableObj.ColumnName = utils.sTableHeaderELF;
-                tableObj.ColumnFormat = utils.sColumnFormatELF;
-                tableObj.ColumnEditable = utils.sColumnEditableELF;
+            switch nObjectives
+                case 1
+                    numCols = utils.nTableNumColsE;
+                    tableObj.ColumnName = utils.sTableHeaderE;
+                    tableObj.ColumnFormat = utils.sColumnFormatE;
+                    tableObj.ColumnEditable = utils.sColumnEditableE;
+                case 2
+                    if app.objList(2) == utils.OBJ_LOADBALANCE
+                        numCols = utils.nTableNumColsEL;
+                        tableObj.ColumnName = utils.sTableHeaderEL;
+                        tableObj.ColumnFormat = utils.sColumnFormatEL;
+                        tableObj.ColumnEditable = utils.sColumnEditableEL;
+                    else
+                        numCols = utils.nTableNumColsEF;
+                        tableObj.ColumnName = utils.sTableHeaderEF;
+                        tableObj.ColumnFormat = utils.sColumnFormatEF;
+                        tableObj.ColumnEditable = utils.sColumnEditableEF;
+                    end
+                case 3
+                    numCols = utils.nTableNumColsELF;
+                    tableObj.ColumnName = utils.sTableHeaderELF;
+                    tableObj.ColumnFormat = utils.sColumnFormatELF;
+                    tableObj.ColumnEditable = utils.sColumnEditableELF;
             end
+            
             tableObj.RowName = 'numbered';
 
             % Initialize Table content
@@ -472,10 +579,13 @@ classdef utils
                 paramObj.alg{i,1} = alg{cp(i,4),1};
                 paramObj.approach{i,1} = approach{cp(i,2)};
                 sGrid = strcat(num2str(paramObj.r(i)),"x",num2str(paramObj.c(i)));
-                if length(app.objList(1)) == 3
-                    tableObj.Data(i,:) = [paramObj.appName(i), paramObj.approach{i,1}, sGrid, num2str(paramObj.pop(i)), num2str(paramObj.mr(i)), paramObj.alg{i,1}, "Wait", "0.0/0.0", "0.0/0.0", "0.0/0.0", "0", 0];
-                else
-                    tableObj.Data(i,:) = [paramObj.appName(i), paramObj.approach{i,1}, sGrid, num2str(paramObj.pop(i)), num2str(paramObj.mr(i)), paramObj.alg{i,1}, "Wait", "0.0/0.0", "0.0/0.0", "0", 0];
+                switch nObjectives
+                    case 1
+                        tableObj.Data(i,:) = [paramObj.appName(i), paramObj.approach{i,1}, sGrid, num2str(paramObj.pop(i)), num2str(paramObj.mr(i)), paramObj.alg{i,1}, "Wait", "0.0/0.0", "0", 0];
+                    case 2
+                        tableObj.Data(i,:) = [paramObj.appName(i), paramObj.approach{i,1}, sGrid, num2str(paramObj.pop(i)), num2str(paramObj.mr(i)), paramObj.alg{i,1}, "Wait", "0.0/0.0", "0.0/0.0", "0", 0];
+                    case 3
+                        tableObj.Data(i,:) = [paramObj.appName(i), paramObj.approach{i,1}, sGrid, num2str(paramObj.pop(i)), num2str(paramObj.mr(i)), paramObj.alg{i,1}, "Wait", "0.0/0.0", "0.0/0.0", "0.0/0.0", "0", 0];
                 end
             end
             % Format parameters to save info
@@ -485,7 +595,8 @@ classdef utils
         
         %% Retrieve the encoding value according to the selected option in @option
         function encoding = getEncodingTable(objList, option)
-            is_3_obj = length(objList) == 3;
+
+            numObjectives = length(objList);
 
             switch option
                 case 'input'
@@ -507,23 +618,15 @@ classdef utils
                 case 'LB'
                     encoding = 9;
                 case 'FT'
-                    if is_3_obj
-                        encoding = 10;
-                    else
+                    if numObjectives == 2
                         encoding = 9;
+                    else
+                        encoding = 10;
                     end
                 case 'ttot'
-                    if is_3_obj
-                        encoding = 11;
-                    else
-                        encoding = 10;
-                    end
+                    encoding = 8 + numObjectives;
                 case 'select'
-                    if is_3_obj
-                        encoding = 12;
-                    else
-                        encoding = 11;
-                    end
+                    encoding = 8 + numObjectives + 1;
                 otherwise
                     encoding = 0;
             end
@@ -568,6 +671,8 @@ classdef utils
                 n = height(app.batchResults);
             end
 
+            numObjectives = length(app.objList);
+            
             % Create the folder name by adding a timestamp
             sReportFolder = strcat(sRoot,string(datetime('now', 'Format', 'yyyyMMdd_HHmmSS')));
             
@@ -582,8 +687,17 @@ classdef utils
             save(strcat(sReportFolder,'/results.mat'), "batch_results");
             
             [~, lP] = size(app.paramsToSave);
-            objectiveStatistics = cell(n, lP + 2*length(app.objList));
+            objectiveStatistics = cell(n, lP + 2*numObjectives);
             
+            header = ["app" "application_mode" "grid" "pop_size" "mut_rate" "algorithm" "mean_1" "std_1" "min_1" "max_1" "q1_1" "q3_3"];
+            if numObjectives >= 2
+                header = [header "mean_2" "std_2" "min_2" "max_2" "q1_2" "q3_2"];
+            elseif numObjectives == 3
+                header = [header "mean_3" "std_3" "min_3" "max_3" "q1_3" "q3_3"];
+            end
+            header = [header "ttot"];
+
+            k = 0;
             % Convert matlab results to CSV files
             for i=1:n
                 writematrix(batch_results{i,1}.best_objectives, strcat(sReportFolder,'/',num2str(i),'_best_objectives.csv'));
@@ -593,22 +707,42 @@ classdef utils
                 for j=1:lP
                     objectiveStatistics{i,j} = app.paramsToSave{i,j};
                 end
-                objectiveStatistics{i,j+1} = batch_results{i,1}.mean_obj1;
-                objectiveStatistics{i,j+2} = batch_results{i,1}.std_obj1;
-                objectiveStatistics{i,j+3} = batch_results{i,1}.mean_obj2;
-                objectiveStatistics{i,j+4} = batch_results{i,1}.std_obj2;
-                if length(app.objList) == 3
-                    objectiveStatistics{i,j+5} = batch_results{i,1}.mean_obj3;
-                    objectiveStatistics{i,j+6} = batch_results{i,1}.std_obj3;
-                    objectiveStatistics{i,j+7} = batch_results{i,1}.mean_ttot;
-                else
-                    objectiveStatistics{i,j+5} = batch_results{i,1}.mean_ttot;
+                k = j;
+                objectiveStatistics{i,k+1} = batch_results{i,1}.mean_obj1;
+                objectiveStatistics{i,k+2} = batch_results{i,1}.std_obj1;
+                objectiveStatistics{i,k+3} = batch_results{i,1}.min_obj1;
+                objectiveStatistics{i,k+4} = batch_results{i,1}.max_obj1;
+                objectiveStatistics{i,k+5} = batch_results{i,1}.q1_obj1;
+                objectiveStatistics{i,k+6} = batch_results{i,1}.q3_obj1;
+                k = k + 6;
+                
+                if numObjectives >= 2
+                    objectiveStatistics{i,k+1} = batch_results{i,1}.mean_obj2;
+                    objectiveStatistics{i,k+2} = batch_results{i,1}.std_obj2;
+                    objectiveStatistics{i,k+3} = batch_results{i,1}.min_obj2;
+                    objectiveStatistics{i,k+4} = batch_results{i,1}.max_obj2;
+                    objectiveStatistics{i,k+5} = batch_results{i,1}.q1_obj2;
+                    objectiveStatistics{i,k+6} = batch_results{i,1}.q3_obj2;
+                    k = k + 6; 
                 end
+                if numObjectives == 3
+                    objectiveStatistics{i,k+1} = batch_results{i,1}.mean_obj3;
+                    objectiveStatistics{i,k+2} = batch_results{i,1}.std_obj3;
+                    objectiveStatistics{i,k+3} = batch_results{i,1}.min_obj3;
+                    objectiveStatistics{i,k+4} = batch_results{i,1}.max_obj3;
+                    objectiveStatistics{i,k+5} = batch_results{i,1}.q1_obj3;
+                    objectiveStatistics{i,k+6} = batch_results{i,1}.q3_obj3;
+                    k = k + 6;
+                    
+                end
+                objectiveStatistics{i,k+1} = batch_results{i,1}.mean_ttot;
             end
             
             % Save parameters info to a CSV file
             writetable(app.paramsToSave, strcat(sReportFolder,'/params'));
-            writecell(objectiveStatistics, strcat(sReportFolder,'/statistics.csv'));
+            T = cell2table(objectiveStatistics, "VariableNames", header);
+            % writecell(objectiveStatistics, strcat(sReportFolder,'/statistics.csv'));
+            writetable(T, strcat(sReportFolder,'/statistics.csv'));
             utils.log(['Results saved in: ' sReportFolder]);
         end
 
@@ -639,7 +773,7 @@ classdef utils
         function [dec, obj] = callMultiApplicationProblem(app, params)
             func = str2func(params{1,1});
             maxFE = params{1,13};
-            if strcmp(app.applicationMode,'MULTI') || strcmp(app.applicationModeBatch,'MULTI')
+            if utils.is_multi(app)
                 [nT, s, t, w] = utils.concatApps(app);
                 p = params(1,2:12);
                 p{1,1} = sum(nT);
@@ -648,8 +782,9 @@ classdef utils
                 p{1,8} = w;
             else
                 p = params(1,2:12);
-                p{1,1} = sum(params(1,2));
+                % p{1,1} = sum(params(1,2));
             end
+            disp(p);
             [dec, obj] = platemo('problem', @ManyCoreMAV1, 'algorithm', func, 'maxFE', maxFE, 'parameter', p, 'save', 0);
         end
 

@@ -4,23 +4,20 @@ function [CostResultA CostResultB] = MCMACustoGA(Pop, Dist_Tab, NumCore, S, T, P
 % to optimize Many-Core
 %--------------------------------------------------------------------------
 [L, R] = size(Pop);
-MeuCustoEsult=zeros(1,L);
+MeuCustoEsult = zeros(1,L);
 Num_Core = nR * nC;
-
 %Calculo custo de comunicação
 sProc = Pop(:,S);
 tProc = Pop(:,T);
-for s=1:L
-    for x=1:length(S)
-        Dist(s,x) = Dist_Tab(sProc(s,x), tProc(s,x));
-        %Dist = diag(Dist);
-        %Dist = Dist';
-    end
-    
-
-        cost(s,:)  = Dist(s,:) .* P;
-
-
+for s = 1:L
+    for x = 1:length(S)
+        try
+            Dist(s,x) = Dist_Tab(sProc(s,x), tProc(s,x));
+        catch
+            disp('Error Dist');
+        end
+    end    
+    cost(s,:)  = Dist(s,:) .* P;
 end
 
 %Calculo de Load Balance
@@ -37,7 +34,3 @@ CostResultA = [max(cost,[], 2)]; %Alterado para usar a Latência de cada soluç�
 CostResultB = sum(cost);
 
 end
-
-%end
-
-

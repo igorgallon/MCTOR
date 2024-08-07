@@ -35,16 +35,16 @@ else
     [auxiliarCore,auxiliarCusto] = ColocaArea(areasAtuais, auxiliarDim, result);
 end
 
-load 'cellCost_Salva.mat' cellCost;
 resultCost = auxiliarCusto;
-bestresult = cell2mat(cellCost{1}(2));
-if bestresult == 0
-    bestresult = auxiliarDim(1) * auxiliarDim(2) * 100;
-end
-
-if resultCost <= bestresult
-    cellCost{1} = {result auxiliarCusto auxiliarCore};
-    save('cellCost_Salva.mat', 'cellCost');
-end
+% load 'cellCost_Salva.mat' cellCost;
+% bestresult = cell2mat(cellCost{1}(2));
+% if bestresult == 0
+%     bestresult = auxiliarDim(1) * auxiliarDim(2) * 100;
+% end
+% 
+% if resultCost <= bestresult
+%     cellCost{1} = {result auxiliarCusto auxiliarCore};
+%     save('cellCost_Salva.mat', 'cellCost');
+% end
 end
 
