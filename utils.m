@@ -336,16 +336,49 @@ classdef utils
 
         %% Retrieve the algorithm and it variation according to the selected
         % operation in DropDown.The option must follow the pattern {ALGORITHM}_V{VERSION}
-        function [algorithm, variation] = getAlgorithmDropDown(option)
+        % function [algorithm, variation] = getAlgorithmDropDown(option)
+        %     % Split the option by '_'
+        %     name = split(option, '_');
+        %     % Retrieve the first portion as the algorithm name
+        %     algorithm = name{1,1};
+        %     % Retrieve the second portion as the algorithm variation
+        %     if height(name) > 1
+        %         variation = str2double(name{2,1}(2));
+        %     else
+        %         variation = 0;
+        %     end
+        % end
+        function variation = getVariation(algorithm)
+            switch (algorithm)
+                case "HR"
+                    variation = 1;
+                case "HS"
+                    variation = 2;
+                case "DR"
+                    variation = 3;
+                case "DS"
+                    variation = 4;
+                otherwise
+                    variation = 0;
+            end
+        end
+
+        function [algtype, algorithm, variation] = getAlgorithmDropDown(option)
             % Split the option by '_'
             name = split(option, '_');
             % Retrieve the first portion as the algorithm name
             algorithm = name{1,1};
-            % Retrieve the second portion as the algorithm variation
-            if height(name) > 1
-                variation = str2double(name{2,1}(2));
+            if algorithm == "HR" || algorithm == "HS" || algorithm == "DR" || algorithm == "DS"
+                algtype = "DetMap"; % Deterministic Mappings
+                variation = utils.getVariation(algorithm);
             else
-                variation = 0;
+                algtype = "EV"; % Evolutive Algorithm
+                 % Retrieve the second portion as the algorithm variation
+                if height(name) > 1
+                    variation = utils.getVariation(name{2,1});
+                else
+                    variation = 0;
+                end
             end
         end
 
