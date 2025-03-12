@@ -6,8 +6,8 @@
 *.mdl.r*
 *.mat
 batch/
-./execute.m
-./execute.asv
+execute.m
+extract_metrics.m
 
 # Derived content-obscured files
 *.p
