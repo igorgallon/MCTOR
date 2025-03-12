@@ -1,5 +1,5 @@
 tg_cnt 1
-task_cnt 20 5
+task_cnt 29 5
 task_degree 3 2
 period_laxity 1
 period_mul 1, 0.5, 2
