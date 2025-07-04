@@ -8,6 +8,9 @@
 batch/
 execute.m
 extract_metrics.m
+.conda
+__pycache__
+
 
 # Derived content-obscured files
 *.p
