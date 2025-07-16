@@ -82,7 +82,7 @@ class Router(threading.Thread):
                 if next_dir in self.out_queues:
                     self.out_queues[next_dir].put(packet)
                  # Sleep to simulate processing time
-                time.sleep(RT_SLEEP_THREAD_SECONDS)
+                # time.sleep(RT_SLEEP_THREAD_SECONDS)
             except queue.Empty:
                 # print(f"Empty queue {direction}")
                 pass
@@ -93,3 +93,10 @@ class Router(threading.Thread):
         Stops the router thread.
         '''
         self.running = False
+
+    @property
+    def position(self):
+        '''
+        Returns the position of the router as a tuple (x, y).
+        '''
+        return (self.x, self.y)

@@ -34,10 +34,10 @@ class ProcessingElement(threading.Thread):
         Injects a packet into the processing element.
         '''
         if p.dst != (self.x, self.y):
-            print(f"{self.name} Injecting Packet {p.id} from {(self.x, self.y)} Router {p.dst}")
+            print(f"> {self.name} Injecting Packet {p.id} from {(self.x, self.y)} Router {p.dst}")
             self.out_router_queue.put_nowait(p)
         else:
-            print(f"{self.name} Injecting Packet {p.id} to itself is not allowed.")
+            print(f"! {self.name} Injecting Packet {p.id} to itself is not allowed.")
 
     def run(self):
         '''
@@ -51,7 +51,7 @@ class ProcessingElement(threading.Thread):
                 print(f"{self.name} received packet {received.id} from Router {received.src}")
                 received.has_arrived()
                 # Sleep to simulate processing time
-                time.sleep(PE_SLEEP_THREAD_SECONDS)
+                # time.sleep(PE_SLEEP_THREAD_SECONDS)
             
             except queue.Empty:
                 continue
@@ -61,3 +61,10 @@ class ProcessingElement(threading.Thread):
         Stops the processing element thread.
         '''
         self.running = False
+
+    @property
+    def position(self):
+        '''
+        Returns the position of the processing element as a tuple (x, y).
+        '''
+        return (self.x, self.y)

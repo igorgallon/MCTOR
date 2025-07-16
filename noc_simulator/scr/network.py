@@ -11,8 +11,8 @@ def create_network_2d_mesh(rows, columns):
     eps = [] # List to hold processing elements
 
     # Create routers for each coordinate in the specified rows and columns
-    for y in range(columns):
-        for x in range(rows):
+    for x in range(rows):
+        for y in range(columns):
             router = Router(x, y)
             routers[(x, y)] = router
     
