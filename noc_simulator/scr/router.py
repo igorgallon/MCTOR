@@ -1,7 +1,8 @@
 import threading
-import time
 import queue
-from constants import MAX_BUFFER_SIZE, RT_SLEEP_THREAD_SECONDS
+from constants import MAX_BUFFER_SIZE
+from logger import Logger
+from metrics import MetricsCollector
 
 class Router(threading.Thread):
 
@@ -18,7 +19,7 @@ class Router(threading.Thread):
 
         # Connection queues for incoming packets from neighbors and local endpoints
         self.in_queues = {
-            "local": queue.Queue(maxsize=MAX_BUFFER_SIZE),  # Local queue for packets destined to this router
+            "local": queue.Queue(maxsize=100),  # Local queue for packets destined to this router
             "north": queue.Queue(maxsize=MAX_BUFFER_SIZE),  # North neighbor
             "south": queue.Queue(maxsize=MAX_BUFFER_SIZE),  # South neighbor
             "east": queue.Queue(maxsize=MAX_BUFFER_SIZE),   # East neighbor
@@ -77,16 +78,38 @@ class Router(threading.Thread):
                 packet.hops += 1
                 # If a packet is found, route it to the appropriate outgoing queue
                 next_dir = self.route(packet)
-                print(f"{self.name} received packet {packet.id} from {direction}, routing to {next_dir}")
+                Logger().get_logger().debug(f"{self.name} received packet {packet.id} from {direction}, routing to {next_dir}")
                 # If the next direction is valid, put the packet in the corresponding outgoing queue
                 if next_dir in self.out_queues:
                     self.out_queues[next_dir].put(packet)
-                 # Sleep to simulate processing time
-                # time.sleep(RT_SLEEP_THREAD_SECONDS)
+                    # Log the routing of the packet
+                    MetricsCollector().push_metric({
+                        'source': 'router',
+                        'type': 'packet_routed',
+                        'packet_id': packet.id,
+                        'from_dir': direction,
+                        'to_dir': next_dir,
+                        "traffic": packet.payload.get("traffic_pct", 0)
+                    })
+            
             except queue.Empty:
-                # print(f"Empty queue {direction}")
+                pass
+
+            except queue.Full:
+                Logger().get_logger().debug(f"Full queue {direction}")
+                # Log the full queue event
+                MetricsCollector().push_metric({
+                    'source': 'router',
+                    'type': 'packet_loss',
+                    'packet_id': packet.id,
+                    "traffic": packet.payload.get("traffic_pct", 0)
+                })
                 pass
             idx = (idx + 1) % len(queue_keys)
+
+            # TODO:
+            # Primeiro pergunta se o router destino tem espaço para receber o pacote,
+            # Se tiver, manda. Se não tiver, espera um pouco e tenta de novo.
 
     def stop(self):
         '''

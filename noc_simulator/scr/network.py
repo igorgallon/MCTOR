@@ -1,7 +1,7 @@
 from router import Router
 from processing_element import ProcessingElement
 
-def create_network_2d_mesh(rows, columns):
+def create_network_2d_mesh(context):
     '''
     Creates a network of routers and processing elements based on the specified rows and columns.
     Each router is connected to its neighbors using the X-Y topology and it has a local queue for
@@ -9,6 +9,8 @@ def create_network_2d_mesh(rows, columns):
     '''
     routers = {} # Dictionary to hold routers indexed by their (x, y) coordinates
     eps = [] # List to hold processing elements
+
+    rows, columns = context["mesh_size"]
 
     # Create routers for each coordinate in the specified rows and columns
     for x in range(rows):

@@ -1,9 +1,9 @@
 import threading
 import queue
 import time
+from logger import Logger
 from packet import Packet
-from constants import PE_SLEEP_THREAD_SECONDS, MAX_BUFFER_SIZE
-
+from constants import PE_SLEEP_RETRY_SECONDS, MAX_BUFFER_SIZE, RETRY_LIMIT
 
 class ProcessingElement(threading.Thread):
     
@@ -18,6 +18,7 @@ class ProcessingElement(threading.Thread):
         self.daemon = True  # Ensures thread exits when main program exits
         self.in_router_queue = queue.Queue(maxsize=MAX_BUFFER_SIZE)  # Queue for incoming from the router
         self.running = True
+        self.packets_sent = 0  # Counter for packets sent
 
     def set_router_queue(self, out_router_queue):
         '''
@@ -34,10 +35,26 @@ class ProcessingElement(threading.Thread):
         Injects a packet into the processing element.
         '''
         if p.dst != (self.x, self.y):
-            print(f"> {self.name} Injecting Packet {p.id} from {(self.x, self.y)} Router {p.dst}")
-            self.out_router_queue.put_nowait(p)
+            if not self.out_router_queue.full():
+                Logger().get_logger().debug(f"> {self.name} Injecting Packet {p.id} from {(self.x, self.y)} Router {p.dst}")
+                self.out_router_queue.put(p)
+                self.packets_sent += 1
+            else:
+                # Retry mechanism
+                retry_count = 0
+                while retry_count < RETRY_LIMIT:
+                    time.sleep(PE_SLEEP_RETRY_SECONDS)
+                    Logger().get_logger().warning(f"{self.name}  Outgoing queue is full, retrying to inject Packet {p.id}...")
+                    if not self.out_router_queue.full():
+                        self.out_router_queue.put(p)
+                        self.packets_sent += 1
+                        break
+                    retry_count += 1
+                
+                if retry_count >= RETRY_LIMIT:
+                    Logger().get_logger().error(f"{self.name} Failed to inject Packet {p.id} after {retry_count} retries.")
         else:
-            print(f"! {self.name} Injecting Packet {p.id} to itself is not allowed.")
+            Logger().get_logger().error(f"{self.name} Injecting Packet {p.id} to itself is not allowed.")
 
     def run(self):
         '''
@@ -48,10 +65,8 @@ class ProcessingElement(threading.Thread):
                 # Wait for a packet from the router's incoming queue
                 received = self.in_router_queue.get_nowait()
                 # Process the received packet
-                print(f"{self.name} received packet {received.id} from Router {received.src}")
+                Logger().get_logger().debug(f"{self.name} received packet {received.id} from Router {received.src}")
                 received.has_arrived()
-                # Sleep to simulate processing time
-                # time.sleep(PE_SLEEP_THREAD_SECONDS)
             
             except queue.Empty:
                 continue

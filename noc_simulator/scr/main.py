@@ -2,18 +2,14 @@ import os
 import random
 import sys
 import time
+import pandas as pd
+import numpy as np
 import threading
 from logger import Logger
 from network import create_network_2d_mesh
 from packet import Packet
-
-SIMULATION_TIME_SECONDS = 10
-INJECTION_INTERVAL_SECONDS = 1
-
-ROWS = 3
-COLUMNS = 3
-
-PACKAGE_INJECTION_RATE = 0.6
+from metrics import MetricsCollector
+from constants import INJECTION_INTERVAL_SECONDS, METRICS_COLLECTOR_INTERVAL_SECONDS
 
 def load_application_graph(file_path: str):
     """
@@ -68,7 +64,6 @@ def load_application_graph(file_path: str):
 
     return num_tasks, graph
 
-
 def load_tasks_mapping(file_path: str):
     """
     Loads the tasks mapping from a file or other source.
@@ -95,7 +90,7 @@ def load_tasks_mapping(file_path: str):
 
     return rows, columns, mapping
 
-def inject_random_packets(eps, num_packets=1):
+def inject_random_packets(context, eps, num_packets=1):
     """
     Injects random packets into the network.
     Each packet is sent from a random endpoint to a random destination endpoint.
@@ -109,22 +104,52 @@ def inject_random_packets(eps, num_packets=1):
         while dst_ep == src_ep and len(eps) > 1:
             dst_ep = random.choice(eps)
         payload = f"msg from ({src_ep.x},{src_ep.y}) to ({dst_ep.x},{dst_ep.y})"
-        pkt = Packet((src_ep.x, src_ep.y), (dst_ep.x, dst_ep.y), payload)
+        pkt = Packet(context=context, src=(src_ep.x, src_ep.y), dst=(dst_ep.x, dst_ep.y), payload=payload)
         src_ep.inject_packet(pkt)
 
-def inject_packet(eps, graph, mapping):
+def inject_packet(eps, graph, mapping, input_traffic_pct) -> int:
     """
     Injects a packet from all tasks to its mapped processing element.
     """
+    packets_injected = 0
     for v in graph:
         src_ep = eps[mapping[v["source"]]]
         dst_ep = eps[mapping[v["target"]]]
-        pkt = Packet(src_ep.position, dst_ep.position, v["weight"])
+        payload = {
+            "traffic_pct": input_traffic_pct,
+            "weight": v["weight"]
+        }
+        pkt = Packet(src=src_ep.position, dst=dst_ep.position, payload=payload)
         src_ep.inject_packet(pkt)
+        packets_injected += 1
+    
+    return packets_injected
 
-def user_input_listener(stop_event, eps, graph, mapping):
+def metrics_collector(user_stop_event):
+
+    collector = MetricsCollector()
+    Logger().get_logger().info(f"Metrics will be saved to {collector.metrics_file_name}")
+
+    while not user_stop_event.is_set():
+        metrics_dump = []
+        # Collect all available metrics from the queue (non-blocking)
+        metric = collector.get_metric()
+        while metric is not None:
+            metrics_dump.append(metric)
+            metric = collector.get_metric()
+        
+        if metrics_dump:
+            # Append collected metrics to a CSV file
+            df = pd.DataFrame(metrics_dump)
+            metrics_exists = os.path.isfile(collector.metrics_file_name)
+            df.to_csv(collector.metrics_file_name, index=False,  mode='a' if metrics_exists else 'w', header=not metrics_exists)
+
+        time.sleep(METRICS_COLLECTOR_INTERVAL_SECONDS)
+    
+
+def user_input_listener(context, stop_event, eps, graph, mapping):
     import msvcrt
-    Logger().get_logger().info("Press 'i' to inject a random packet, 'q' to quit.")
+    # Logger().get_logger().info("Press 'i' to inject a random packet, 'q' to quit.")
     while not stop_event.is_set():
         if msvcrt.kbhit():
             key = msvcrt.getwch()
@@ -134,10 +159,19 @@ def user_input_listener(stop_event, eps, graph, mapping):
             if key.lower() == 'q':
                 stop_event.set()
                 break
-        # Inject packets according to the PACKAGE_INJECTION_RATE
-        if random.random() < PACKAGE_INJECTION_RATE:
-            inject_packet(eps, graph, mapping)
-        time.sleep(0.05)
+        for traffic in context["input_traffic_pct"]:
+            Logger().get_logger().warning(f"Injecting packets with traffic percentage: {traffic}")
+            # Run simulation according to SIMULATION_STEPS
+            for _ in range(context["simulation_steps"]):
+                # Inject packets according to the PACKAGE_INJECTION_RATE
+                if random.random() < traffic:
+                    inject_packet(eps, graph, mapping, traffic)
+                time.sleep(context["injection_interval"])
+        stop_event.set()
+        break
+
+def get_linear_list(num_steps):
+    return np.linspace(0, 1, num_steps+1).tolist()[1:]
 
 if __name__ == "__main__":
     
@@ -158,9 +192,16 @@ if __name__ == "__main__":
     if rows <= 0 or columns <= 0:
         Logger().get_logger().critical("ROWS and COLUMNS must be positive integers.")
         raise ValueError("ROWS and COLUMNS must be positive integers.")
+    
+    # Create the context for the simulation
+    context = {
+        "total_packets": 500,
+        "input_traffic_pct": get_linear_list(50),
+        "mesh_size": (rows, columns)
+    }
 
     Logger().get_logger().info("Initializing Mesh Network Simulation...")
-    routers, eps = create_network_2d_mesh(rows, columns)
+    routers, eps = create_network_2d_mesh(context)
 
     Logger().get_logger().info("Created network with routers and processing elements:")
     for r in routers.values():
@@ -171,14 +212,45 @@ if __name__ == "__main__":
     
     Logger().get_logger().info("Simulation started! Injecting packets...")
     stop_event = threading.Event()
-    input_thread = threading.Thread(target=user_input_listener, args=(stop_event, eps, graph, mapping), daemon=True)
-    input_thread.start()
+    metrics_thread = threading.Thread(target=metrics_collector, args=(stop_event,), daemon=True)
+    metrics_thread.start()
+
     try:
-        while not stop_event.is_set():
-            time.sleep(0.1)
+
+        for traffic in context["input_traffic_pct"]:
+            # MetricsCollector().push_metric({
+            #     'source': 'simulation',
+            #     'type': 'simulation_start',
+            #     'traffic': traffic
+            # })
+            total_packets = int(traffic * context["total_packets"])
+            Logger().get_logger().warning(f">>> Injecting {total_packets} packets ({traffic}%)")
+            packets_injected = 0
+            # Run simulation according to SIMULATION_STEPS
+            for _ in range(total_packets):
+                # Inject packets according to the PACKAGE_INJECTION_RATE
+                packets_injected += inject_packet(eps, graph, mapping, traffic)
+                time.sleep(INJECTION_INTERVAL_SECONDS)
+
+            Logger().get_logger().warning(f">>> Waiting for completion of {packets_injected} packets ({traffic}%)")
+            # Wait for completion
+            all_done = False
+            while not all_done:
+                packets_arrived = len([met for met in MetricsCollector().get_all_metrics() if met.get('traffic') == traffic and (met.get('type') == 'packet_arrived' or met.get('type') == 'packet_loss')])
+                all_done = packets_arrived >= packets_injected
+                time.sleep(2)
+            
+            Logger().get_logger().warning(f"<<< Traffic finished: {traffic}")
+
+            # MetricsCollector().push_metric({
+            #     'source': 'simulation',
+            #     'type': 'simulation_end',
+            #     'traffic': traffic
+            # })
     finally:
+        
         stop_event.set()
-        input_thread.join()
+
         for ep in eps:
             ep.stop()
         for r in routers.values():
@@ -187,6 +259,8 @@ if __name__ == "__main__":
             ep.join()
         for r in routers.values():
             r.join()
-
-    Logger().get_logger().info("Simulation ended. Exiting...")  # Final message before exiting
+        
+        metrics_thread.join()
+    
+    Logger().get_logger().info("Simulation ended. Exiting...")
     sys.exit(0)

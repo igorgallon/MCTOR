@@ -1,6 +1,7 @@
 import threading
 from datetime import datetime
-
+from logger import Logger
+from metrics import MetricsCollector
 class Packet:
     
     _id_counter = 0
@@ -27,7 +28,7 @@ class Packet:
         self.dst = dst # Destination coordinates (x, y) of the packet
         self.payload = payload # Data carried by the packet
         self.hops = 0 # Number of hops the packet has made
-        self.creation_time = datetime.now() # Time when the packet was created
+        self.creation_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S") # Time when the packet was created
         self.deliver_time = 0 # Time when the packet was delivered (0 if not yet delivered)
         # print(f"Created packet #{self.id} from {self.src} to {self.dst} with payload: {self.payload}")
 
@@ -36,5 +37,18 @@ class Packet:
         Marks the packet as arrived by setting the delivery time.
         This method should be called when the packet reaches its destination.
         '''
-        self.deliver_time = datetime.now()
-        print(f"Packet #{self.id} arrived to {self.dst}!")
+        Logger().get_logger().debug(f"Packet #{self.id} arrived to {self.dst}!")
+        self.deliver_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        # Log the arrival of the packet
+        MetricsCollector().push_metric({
+            'source': 'packet',
+            'type': 'packet_arrived',
+            'packet_id': self.id,
+            'src': self.src,
+            'dst': self.dst,
+            'hops': self.hops,
+            'creation_time': self.creation_time,
+            'deliver_time': self.deliver_time,
+            "traffic": self.payload.get("traffic_pct", 0),
+            "weight": self.payload.get("weight", 0)
+        })
