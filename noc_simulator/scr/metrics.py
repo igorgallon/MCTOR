@@ -23,6 +23,7 @@ class MetricsCollector:
             raise ValueError("Metric must be a dictionary.")
         m = {
             'source': metric.get('source', ''),
+            'id': metric.get('id', ''),
             'type': metric.get('type', ''),
             'timestamp': datetime.now(),
             'packet_id': metric.get('packet_id', ''),
@@ -40,6 +41,9 @@ class MetricsCollector:
         with self.metrics_list_lock:
             self.metrics_list.append(m)
 
+    def get_metrics_file_name(self):
+        return self.metrics_file_name
+    
     def get_metric(self):
         try:
             return self.metrics_queue.get_nowait()

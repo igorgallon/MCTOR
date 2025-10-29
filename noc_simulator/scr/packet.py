@@ -42,6 +42,7 @@ class Packet:
         # Log the arrival of the packet
         MetricsCollector().push_metric({
             'source': 'packet',
+            'id': self.id,
             'type': 'packet_arrived',
             'packet_id': self.id,
             'src': self.src,

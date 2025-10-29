@@ -3,7 +3,8 @@ import queue
 import time
 from logger import Logger
 from packet import Packet
-from constants import PE_SLEEP_RETRY_SECONDS, MAX_BUFFER_SIZE, RETRY_LIMIT
+from metrics import MetricsCollector
+from constants import PE_SLEEP_RETRY_SECONDS, MAX_BUFFER_SIZE, RETRY_LIMIT, ENABLE_RETRY_MECHANISM
 
 class ProcessingElement(threading.Thread):
     
@@ -39,22 +40,62 @@ class ProcessingElement(threading.Thread):
                 Logger().get_logger().debug(f"> {self.name} Injecting Packet {p.id} from {(self.x, self.y)} Router {p.dst}")
                 self.out_router_queue.put(p)
                 self.packets_sent += 1
+                MetricsCollector().push_metric({
+                    'source': 'router',
+                    'id': f"{self.x}{self.y}",
+                    'type': 'packet_sent',
+                    'packet_id': p.id,
+                    'src': p.src,
+                    'dst': p.dst,
+                    'traffic': p.payload.get("traffic_pct", 0)
+                })
+                return True
             else:
-                # Retry mechanism
-                retry_count = 0
-                while retry_count < RETRY_LIMIT:
-                    time.sleep(PE_SLEEP_RETRY_SECONDS)
-                    Logger().get_logger().warning(f"{self.name}  Outgoing queue is full, retrying to inject Packet {p.id}...")
-                    if not self.out_router_queue.full():
-                        self.out_router_queue.put(p)
-                        self.packets_sent += 1
-                        break
-                    retry_count += 1
-                
-                if retry_count >= RETRY_LIMIT:
-                    Logger().get_logger().error(f"{self.name} Failed to inject Packet {p.id} after {retry_count} retries.")
+                if ENABLE_RETRY_MECHANISM:
+                    # Retry mechanism
+                    retry_count = 0
+                    while retry_count < RETRY_LIMIT:
+                        time.sleep(PE_SLEEP_RETRY_SECONDS)
+                        Logger().get_logger().warning(f"{self.name}  Outgoing queue is full, retrying to inject Packet {p.id}...")
+                        if not self.out_router_queue.full():
+                            self.out_router_queue.put(p)
+                            self.packets_sent += 1
+                            MetricsCollector().push_metric({
+                                'source': 'router',
+                                'id': f"{self.x}{self.y}",
+                                'type': 'packet_sent',
+                                'packet_id': p.id,
+                                'src': p.src,
+                                'dst': p.dst,
+                                'traffic': p.payload.get("traffic_pct", 0)
+                            })
+                            return True
+                        retry_count += 1
+                    
+                    if retry_count >= RETRY_LIMIT:
+                        Logger().get_logger().error(f"{self.name} Failed to inject Packet {p.id} after {retry_count} retries.")
+                        MetricsCollector().push_metric({
+                            'source': 'router',
+                            'id': f"{self.x}{self.y}",
+                            'type': 'packet_loss',
+                            'packet_id': p.id,
+                            'traffic': p.payload.get("traffic_pct", 0)
+                        })
+                    
+                else:
+                    Logger().get_logger().error(f"{self.name} Outgoing queue is full, cannot inject Packet {p.id}.")
+                    MetricsCollector().push_metric({
+                        'source': 'router',
+                        'id': f"{self.x}{self.y}",
+                        'type': 'packet_loss',
+                        'packet_id': p.id,
+                        'traffic': p.payload.get("traffic_pct", 0)
+                    })
+        
         else:
             Logger().get_logger().error(f"{self.name} Injecting Packet {p.id} to itself is not allowed.")
+        
+        return False
 
     def run(self):
         '''

@@ -19,7 +19,7 @@ class Router(threading.Thread):
 
         # Connection queues for incoming packets from neighbors and local endpoints
         self.in_queues = {
-            "local": queue.Queue(maxsize=100),  # Local queue for packets destined to this router
+            "local": queue.Queue(maxsize=MAX_BUFFER_SIZE),  # Local queue for packets destined to this router
             "north": queue.Queue(maxsize=MAX_BUFFER_SIZE),  # North neighbor
             "south": queue.Queue(maxsize=MAX_BUFFER_SIZE),  # South neighbor
             "east": queue.Queue(maxsize=MAX_BUFFER_SIZE),   # East neighbor
@@ -85,6 +85,7 @@ class Router(threading.Thread):
                     # Log the routing of the packet
                     MetricsCollector().push_metric({
                         'source': 'router',
+                        'id': f"{self.x}{self.y}",
                         'type': 'packet_routed',
                         'packet_id': packet.id,
                         'from_dir': direction,
@@ -100,6 +101,7 @@ class Router(threading.Thread):
                 # Log the full queue event
                 MetricsCollector().push_metric({
                     'source': 'router',
+                    'id': f"{self.x}{self.y}",
                     'type': 'packet_loss',
                     'packet_id': packet.id,
                     "traffic": packet.payload.get("traffic_pct", 0)
