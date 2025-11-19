@@ -34,7 +34,7 @@ class MetricsCollector:
             'to_dir': metric.get('to_dir', ''),
             'creation_time': metric.get('creation_time', ''),
             'deliver_time': metric.get('deliver_time', ''),
-            "traffic": metric.get("traffic", ''),
+            "execution_id": metric.get("execution_id", ''),
             "weight": metric.get("weight", '')
         }        
         self.metrics_queue.put(m)

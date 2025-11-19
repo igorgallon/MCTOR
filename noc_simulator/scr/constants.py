@@ -1,9 +1,14 @@
 # Maximum number of elements in a income/outcome buffers
 MAX_BUFFER_SIZE = 10
 
-LINK_BANDWIDTH = 1  # packets per cycle
+LINK_BANDWIDTH = 10  # packets per cycle
 
-NUMBER_OF_CYCLES = 500 # Total number of cycles for the each simulation
+FLITS_WEIGHT = 1 # Weight of each flit for metrics calculation
+
+NUMBER_OF_CYCLES = 100 # Total number of cycles for the each simulation
+
+ROUTING_ALGORITHM = "XY"  # Default routing algorithm: "XY", "NEGATIVE_FIRST", "WEST_FIRST", "NORTH_LEAST", "ODD_EVEN"
+ARBITER_ALGORITHM = "ROUND_ROBIN"  # Default arbiter algorithm: "ROUND_ROBIN"
 
 INJECTION_INTERVAL_SECONDS = 0.7  # Interval between packet injections
 RT_SLEEP_THREAD_SECONDS = 0.2

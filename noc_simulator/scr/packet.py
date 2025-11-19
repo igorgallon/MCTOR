@@ -2,6 +2,7 @@ import threading
 from datetime import datetime
 from logger import Logger
 from metrics import MetricsCollector
+from constants import FLITS_WEIGHT
 class Packet:
     
     _id_counter = 0
@@ -37,7 +38,7 @@ class Packet:
         Marks the packet as arrived by setting the delivery time.
         This method should be called when the packet reaches its destination.
         '''
-        Logger().get_logger().debug(f"Packet #{self.id} arrived to {self.dst}!")
+        Logger().get_logger().debug(f"Packet #{self.id} arrived to {self.dst}! W: {self.payload.get('weight')}")
         self.deliver_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         # Log the arrival of the packet
         MetricsCollector().push_metric({
@@ -50,6 +51,6 @@ class Packet:
             'hops': self.hops,
             'creation_time': self.creation_time,
             'deliver_time': self.deliver_time,
-            "traffic": self.payload.get("traffic_pct", 0),
-            "weight": self.payload.get("weight", 0)
+            "execution_id": self.payload.get("execution_id"),
+            "weight": self.payload.get("weight")
         })

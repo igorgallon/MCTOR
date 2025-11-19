@@ -37,17 +37,19 @@ class ProcessingElement(threading.Thread):
         '''
         if p.dst != (self.x, self.y):
             if not self.out_router_queue.full():
-                Logger().get_logger().debug(f"> {self.name} Injecting Packet {p.id} from {(self.x, self.y)} Router {p.dst}")
+                Logger().get_logger().debug(f"> {self.name} Injecting Packet {p.id} S: {(self.x, self.y)} T: {p.dst} W: {p.payload.get('weight')}")
                 self.out_router_queue.put(p)
                 self.packets_sent += 1
                 MetricsCollector().push_metric({
                     'source': 'router',
-                    'id': f"{self.x}{self.y}",
+                    'id': self.name,
                     'type': 'packet_sent',
                     'packet_id': p.id,
+                    'creation_time': p.creation_time,
                     'src': p.src,
                     'dst': p.dst,
-                    'traffic': p.payload.get("traffic_pct", 0)
+                    'execution_id': p.payload.get("execution_id"),
+                    'weight': p.payload.get("weight")
                 })
                 return True
             else:
@@ -62,12 +64,14 @@ class ProcessingElement(threading.Thread):
                             self.packets_sent += 1
                             MetricsCollector().push_metric({
                                 'source': 'router',
-                                'id': f"{self.x}{self.y}",
+                                'id': self.name,
                                 'type': 'packet_sent',
                                 'packet_id': p.id,
+                                'creation_time': p.creation_time,
                                 'src': p.src,
                                 'dst': p.dst,
-                                'traffic': p.payload.get("traffic_pct", 0)
+                                'execution_id': p.payload.get("execution_id"),
+                                'weight': p.payload.get("weight")
                             })
                             return True
                         retry_count += 1
@@ -76,20 +80,22 @@ class ProcessingElement(threading.Thread):
                         Logger().get_logger().error(f"{self.name} Failed to inject Packet {p.id} after {retry_count} retries.")
                         MetricsCollector().push_metric({
                             'source': 'router',
-                            'id': f"{self.x}{self.y}",
+                            'id': self.name,
                             'type': 'packet_loss',
                             'packet_id': p.id,
-                            'traffic': p.payload.get("traffic_pct", 0)
+                            'execution_id': p.payload.get("execution_id"),
+                            'weight': p.payload.get("weight")
                         })
                     
                 else:
                     Logger().get_logger().error(f"{self.name} Outgoing queue is full, cannot inject Packet {p.id}.")
                     MetricsCollector().push_metric({
                         'source': 'router',
-                        'id': f"{self.x}{self.y}",
+                        'id': self.name,
                         'type': 'packet_loss',
                         'packet_id': p.id,
-                        'traffic': p.payload.get("traffic_pct", 0)
+                        'execution_id': p.payload.get("execution_id"),
+                        'weight': p.payload.get("weight")
                     })
         
         else:
@@ -106,7 +112,7 @@ class ProcessingElement(threading.Thread):
                 # Wait for a packet from the router's incoming queue
                 received = self.in_router_queue.get_nowait()
                 # Process the received packet
-                Logger().get_logger().debug(f"{self.name} received packet {received.id} from Router {received.src}")
+                Logger().get_logger().debug(f"{self.name} received packet {received.id} from Router {received.src}! W: {received.payload.get('weight')}")
                 received.has_arrived()
             
             except queue.Empty:

@@ -6,13 +6,14 @@ import pandas as pd
 import numpy as np
 import threading
 from logger import Logger
-from network import create_network_2d_mesh
+from network import Network
 from packet import Packet
 from metrics import MetricsCollector
 from constants import (
     INJECTION_INTERVAL_SECONDS,
     METRICS_COLLECTOR_INTERVAL_SECONDS,
-    NUMBER_OF_CYCLES
+    NUMBER_OF_CYCLES,
+    FLITS_WEIGHT
 )
 
 def load_application_graph(file_path: str):
@@ -94,16 +95,16 @@ def load_tasks_mapping(file_path: str):
 
     return rows, columns, mapping
 
-def inject_packet(eps, graph, mapping, traffic) -> int:
+def inject_packet(eps, graph, mapping, num_packets) -> int:
     """
     Injects a packet to all active EPs based on the input traffic rate.
     """
-    packets_injected = 0
+    flits_injected = 0
     # for v in graph:
     #     src_ep = eps[mapping[v["source"]]]
     #     dst_ep = eps[mapping[v["target"]]]
     #     payload = {
-    #         "traffic_pct": traffic,
+    #         "execution_id": execution_id,
     #         "weight": v["weight"]
     #     }
     #     pkt = Packet(src=src_ep.position, dst=dst_ep.position, payload=payload)
@@ -111,21 +112,21 @@ def inject_packet(eps, graph, mapping, traffic) -> int:
     #     packets_injected += 1
 
     # Inject packets to all EPs randomly
+    # for _ in range(num_packets):
+    packet_weight = FLITS_WEIGHT * num_packets
     for ep in eps:
-         # Uses the Bernoulli distribution for traffic injection
-        if random.random() <= traffic:
+        dst_ep = random.choice(eps)
+        while dst_ep == ep:
             dst_ep = random.choice(eps)
-            while dst_ep == ep:
-                dst_ep = random.choice(eps)
-            payload = {
-                "traffic_pct": traffic,
-                "weight": traffic
-            }
-            pkt = Packet(src=ep.position, dst=dst_ep.position, payload=payload)
-            if ep.inject_packet(pkt):
-                packets_injected += 1
+        payload = {
+            "execution_id": num_packets,
+            "weight": packet_weight
+        }
+        pkt = Packet(src=ep.position, dst=dst_ep.position, payload=payload) # Flit
+        if ep.inject_packet(pkt):
+            flits_injected += packet_weight
 
-    return packets_injected
+    return flits_injected
 
 def metrics_collector(user_stop_event):
 
@@ -160,19 +161,19 @@ def metrics_collector(user_stop_event):
 #             if key.lower() == 'q':
 #                 stop_event.set()
 #                 break
-#         for traffic in context["input_traffic_rate"]:
-#             Logger().get_logger().warning(f"Injecting packets with traffic percentage: {traffic}")
+#         for execution_id in context["input_execution_id_rate"]:
+#             Logger().get_logger().warning(f"Injecting packets with execution_id percentage: {execution_id}")
 #             # Run simulation according to SIMULATION_STEPS
 #             for _ in range(context["simulation_steps"]):
 #                 # Inject packets according to the PACKAGE_INJECTION_RATE
-#                 if random.random() < traffic:
-#                     inject_packet(eps, graph, mapping, traffic)
+#                 if random.random() < execution_id:
+#                     inject_packet(eps, graph, mapping, execution_id)
 #                 time.sleep(context["injection_interval"])
 #         stop_event.set()
 #         break
 
-def get_linear_list(num_steps):
-    return np.linspace(0, 1, num_steps+1).tolist()[1:]
+def get_linear_list(num_steps, end_pct=1.0):
+    return np.linspace(0, end_pct, num_steps+1).tolist()[1:]
 
 """
 
@@ -188,6 +189,18 @@ e depois em Python (implementação mais simples de Multiprocessamento). Por que
 
 
 Comparação com outros simuladores. Comparações qualitativas
+
+Comparação quantitativa:
+- Diferentes algoritmos de roteamento
+- Tamanho do Grid
+
+Comparação qualitativa:
+- Outros NoCs, no que o nosso é melhor
+
+https://ieeexplore-ieee-org.ez31.periodicos.capes.gov.br/document/4919636
+https://ieeexplore-ieee-org.ez31.periodicos.capes.gov.br/document/11141644/
+
+https://chat.deepseek.com/share/gqbiivql6tvccke492
 
 Test1: Comparação com os resultados do Khan Tahir
  - Apontar diferenças: o nosso não tem perda de pacotes, por exemplo
@@ -212,7 +225,7 @@ if __name__ == "__main__":
     num_tasks, graph = load_application_graph("embedded_app_graphs/mpeg4.app")
 
     Logger().get_logger().info("Loading tasks mapping...")
-    rows, columns, mapping = load_tasks_mapping("noc_simulator/mpeg4_mapping8_8.map")
+    rows, columns, mapping = load_tasks_mapping("noc_simulator/mpeg4_mapping.map")
 
     # Merge the Application Graphs with the mapping
     if not graph:
@@ -229,21 +242,15 @@ if __name__ == "__main__":
     # Create the context for the simulation
     context = {
         "simulation_steps": NUMBER_OF_CYCLES,
-        "input_traffic_rate": get_linear_list(30),
+        "input_traffic_rate": get_linear_list(10, 0.5),
         "injection_interval": INJECTION_INTERVAL_SECONDS,
         "mesh_size": (rows, columns)
     }
 
     Logger().get_logger().info("Initializing Mesh Network Simulation...")
     Logger().get_logger().info(f"Configuration: {context}")
-    routers, eps = create_network_2d_mesh(context)
-
-    Logger().get_logger().info("Created network with routers and processing elements:")
-    for r in routers.values():
-        r.start()
-    Logger().get_logger().info("Starting processing elements...")
-    for ep in eps:
-        ep.start()
+    mesh_network = Network(context=context)
+    mesh_network.start()
     
     Logger().get_logger().info("Simulation started! Injecting packets...")
     stop_event = threading.Event()
@@ -254,36 +261,31 @@ if __name__ == "__main__":
         total_progress = len(context["input_traffic_rate"])
         # Run simulation for each input traffic rate
         for p, traffic in enumerate(context["input_traffic_rate"]):
-            Logger().get_logger().warning(f">>> ({p+1}/{total_progress}) Injecting packets ({traffic}%)")
-            packets_injected = 0
-            # Run simulation according to 'simulation_steps'
-            for cycle in range(context["simulation_steps"]):
-                # Inject packets according to the PACKAGE_INJECTION_RATE
-                packets_injected += inject_packet(eps, graph, mapping, traffic)
-                time.sleep(context["injection_interval"])
+            num_packets = int(context["simulation_steps"] * traffic)
+            Logger().get_logger().warning(f">>> ({p+1}/{total_progress}) Injecting {num_packets} packets ({traffic}%)")
+            # Inject packets according to the PACKAGE_INJECTION_RATE
+            flits_injected = inject_packet(mesh_network.eps, graph, mapping, num_packets)
+            
+            time.sleep(context["injection_interval"])
 
-            Logger().get_logger().warning(f">>> Waiting for completion of {packets_injected} packets ({traffic}%)")
+            mesh_network.begin_processing()
+
+            Logger().get_logger().warning(f">>> Waiting for completion of {flits_injected} packets ({traffic}%)")
             # Wait for completion
             all_done = False
             while not all_done:
-                packets_arrived = len([met for met in MetricsCollector().get_all_metrics() if met.get('traffic') == traffic and (met.get('type') == 'packet_arrived' or met.get('type') == 'packet_loss')])
-                all_done = packets_arrived >= packets_injected
-                Logger().get_logger().info(f"Progress: {packets_arrived}/{packets_injected} packets ({traffic}%)")
+                metrics = [met for met in MetricsCollector().get_all_metrics() if met.get('execution_id') == num_packets and (met.get('type') == 'packet_arrived' or met.get('type') == 'packet_loss')]
+                # Get the unique packet IDs from the metrics
+                flits_caught = sum(met.get("weight", 0) for met in metrics)
+                all_done = flits_caught >= flits_injected
+                Logger().get_logger().info(f"Progress: {flits_caught}/{flits_injected} packets ({traffic}%)")
                 time.sleep(2)
-            Logger().get_logger().warning(f"<<< Traffic finished: {traffic}")
-    finally:
-        
-        stop_event.set()
 
-        for ep in eps:
-            ep.stop()
-        for r in routers.values():
-            r.stop()
-        for ep in eps:
-            ep.join()
-        for r in routers.values():
-            r.join()
-        
+            mesh_network.stop_processing()
+            Logger().get_logger().info(f"<<< Traffic finished: {traffic}%")
+    finally:
+        stop_event.set()
+        mesh_network.stop()
         metrics_thread.join()
 
     Logger().get_logger().info(f"Simulation ended. Metrics saved to {MetricsCollector().get_metrics_file_name()}. Exiting...")
