@@ -95,7 +95,7 @@ def load_tasks_mapping(file_path: str):
 
     return rows, columns, mapping
 
-def inject_packet(eps, graph, mapping, num_packets) -> int:
+def inject_packet(eps, graph, mapping, num_flits) -> int:
     """
     Injects a packet to all active EPs based on the input traffic rate.
     """
@@ -113,13 +113,13 @@ def inject_packet(eps, graph, mapping, num_packets) -> int:
 
     # Inject packets to all EPs randomly
     # for _ in range(num_packets):
-    packet_weight = FLITS_WEIGHT * num_packets
+    packet_weight = FLITS_WEIGHT * num_flits
     for ep in eps:
         dst_ep = random.choice(eps)
         while dst_ep == ep:
             dst_ep = random.choice(eps)
         payload = {
-            "execution_id": num_packets,
+            "execution_id": num_flits,
             "weight": packet_weight
         }
         pkt = Packet(src=ep.position, dst=dst_ep.position, payload=payload) # Flit
@@ -242,7 +242,7 @@ if __name__ == "__main__":
     # Create the context for the simulation
     context = {
         "simulation_steps": NUMBER_OF_CYCLES,
-        "input_traffic_rate": get_linear_list(10, 0.5),
+        "input_traffic_rate": get_linear_list(20, 1.5),
         "injection_interval": INJECTION_INTERVAL_SECONDS,
         "mesh_size": (rows, columns)
     }
@@ -261,10 +261,10 @@ if __name__ == "__main__":
         total_progress = len(context["input_traffic_rate"])
         # Run simulation for each input traffic rate
         for p, traffic in enumerate(context["input_traffic_rate"]):
-            num_packets = int(context["simulation_steps"] * traffic)
-            Logger().get_logger().warning(f">>> ({p+1}/{total_progress}) Injecting {num_packets} packets ({traffic}%)")
+            num_flits = int(context["simulation_steps"] * traffic)
+            Logger().get_logger().warning(f">>> ({p+1}/{total_progress}) Injecting {num_flits} packets ({traffic}%)")
             # Inject packets according to the PACKAGE_INJECTION_RATE
-            flits_injected = inject_packet(mesh_network.eps, graph, mapping, num_packets)
+            flits_injected = inject_packet(mesh_network.eps, graph, mapping, num_flits)
             
             time.sleep(context["injection_interval"])
 
@@ -274,7 +274,7 @@ if __name__ == "__main__":
             # Wait for completion
             all_done = False
             while not all_done:
-                metrics = [met for met in MetricsCollector().get_all_metrics() if met.get('execution_id') == num_packets and (met.get('type') == 'packet_arrived' or met.get('type') == 'packet_loss')]
+                metrics = [met for met in MetricsCollector().get_all_metrics() if met.get('execution_id') == num_flits and (met.get('type') == 'packet_arrived' or met.get('type') == 'packet_loss')]
                 # Get the unique packet IDs from the metrics
                 flits_caught = sum(met.get("weight", 0) for met in metrics)
                 all_done = flits_caught >= flits_injected
