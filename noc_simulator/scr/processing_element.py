@@ -1,12 +1,12 @@
-import threading
 import queue
 import time
 from logger import Logger
+from clock import get_cycle
 from packet import Packet
 from metrics import MetricsCollector
 from constants import PE_SLEEP_RETRY_SECONDS, MAX_BUFFER_SIZE, RETRY_LIMIT, ENABLE_RETRY_MECHANISM
 
-class ProcessingElement(threading.Thread):
+class ProcessingElement:
     
     def __init__(self, x, y):
         '''
@@ -48,6 +48,7 @@ class ProcessingElement(threading.Thread):
                     'creation_time': p.creation_time,
                     'src': p.src,
                     'dst': p.dst,
+                    'cycles': get_cycle(),
                     'execution_id': p.payload.get("execution_id"),
                     'weight': p.payload.get("weight")
                 })
@@ -70,6 +71,7 @@ class ProcessingElement(threading.Thread):
                                 'creation_time': p.creation_time,
                                 'src': p.src,
                                 'dst': p.dst,
+                                'cycles': get_cycle(),
                                 'execution_id': p.payload.get("execution_id"),
                                 'weight': p.payload.get("weight")
                             })
@@ -103,27 +105,35 @@ class ProcessingElement(threading.Thread):
         
         return False
 
-    def run(self):
+    def run_cycle(self):
         '''
         Main loop for the processing element thread.
         '''
-        while self.running:
-            try:
-                # Wait for a packet from the router's incoming queue
-                received = self.in_router_queue.get_nowait()
-                # Process the received packet
-                Logger().get_logger().debug(f"{self.name} received packet {received.id} from Router {received.src}! W: {received.payload.get('weight')}")
-                received.has_arrived()
-            
-            except queue.Empty:
-                continue
+        try:
+            # Wait for a packet from the router's incoming queue
+            received = self.in_router_queue.get_nowait()
+            # Process the received packet
+            Logger().get_logger().debug(f"{self.name} received packet {received.id} from Router {received.src}! W: {received.payload.get('weight')}")
+            received.has_arrived()
+        
+        except queue.Empty:
+            pass
+
+    def start(self):
+        '''
+        Starts the processing element thread.
+        '''
+        self.packets_sent = 0 # Reset packets sent counter
+        with self.in_router_queue.mutex:
+            self.in_router_queue.queue.clear()
 
     def stop(self):
         '''
         Stops the processing element thread.
         '''
-        self.running = False
-
+        with self.in_router_queue.mutex:
+            self.in_router_queue.queue.clear()
+        
     @property
     def position(self):
         '''

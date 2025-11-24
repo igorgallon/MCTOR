@@ -1,8 +1,8 @@
 import threading
+from clock import get_cycle
 from datetime import datetime
 from logger import Logger
 from metrics import MetricsCollector
-from constants import FLITS_WEIGHT
 class Packet:
     
     _id_counter = 0
@@ -16,6 +16,7 @@ class Packet:
         with cls._lock:
             cls._id_counter += 1
             return cls._id_counter
+    
 
     def __init__(self, src, dst, payload):
         '''
@@ -29,9 +30,9 @@ class Packet:
         self.dst = dst # Destination coordinates (x, y) of the packet
         self.payload = payload # Data carried by the packet
         self.hops = 0 # Number of hops the packet has made
-        self.creation_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S") # Time when the packet was created
+        self.creation_time = datetime.now() # Time when the packet was created
         self.deliver_time = 0 # Time when the packet was delivered (0 if not yet delivered)
-        # print(f"Created packet #{self.id} from {self.src} to {self.dst} with payload: {self.payload}")
+    
 
     def has_arrived(self):
         '''
@@ -39,7 +40,7 @@ class Packet:
         This method should be called when the packet reaches its destination.
         '''
         Logger().get_logger().debug(f"Packet #{self.id} arrived to {self.dst}! W: {self.payload.get('weight')}")
-        self.deliver_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        self.deliver_time = datetime.now()
         # Log the arrival of the packet
         MetricsCollector().push_metric({
             'source': 'packet',
@@ -49,6 +50,7 @@ class Packet:
             'src': self.src,
             'dst': self.dst,
             'hops': self.hops,
+            'cycles': get_cycle(),
             'creation_time': self.creation_time,
             'deliver_time': self.deliver_time,
             "execution_id": self.payload.get("execution_id"),

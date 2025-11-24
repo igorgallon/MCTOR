@@ -1,17 +1,13 @@
 import os
 import random
 import sys
-import time
-import pandas as pd
 import numpy as np
-import threading
+from clock import reset, tick, get_cycle
 from logger import Logger
 from network import Network
 from packet import Packet
 from metrics import MetricsCollector
 from constants import (
-    INJECTION_INTERVAL_SECONDS,
-    METRICS_COLLECTOR_INTERVAL_SECONDS,
     NUMBER_OF_CYCLES,
     FLITS_WEIGHT
 )
@@ -128,50 +124,6 @@ def inject_packet(eps, graph, mapping, num_flits) -> int:
 
     return flits_injected
 
-def metrics_collector(user_stop_event):
-
-    collector = MetricsCollector()
-    Logger().get_logger().info(f"Metrics will be saved to {collector.metrics_file_name}")
-
-    while not user_stop_event.is_set():
-        metrics_dump = []
-        # Collect all available metrics from the queue (non-blocking)
-        metric = collector.get_metric()
-        while metric is not None:
-            metrics_dump.append(metric)
-            metric = collector.get_metric()
-        
-        if metrics_dump:
-            # Append collected metrics to a CSV file
-            df = pd.DataFrame(metrics_dump)
-            metrics_exists = os.path.isfile(collector.metrics_file_name)
-            df.to_csv(collector.metrics_file_name, index=False,  mode='a' if metrics_exists else 'w', header=not metrics_exists)
-
-        time.sleep(METRICS_COLLECTOR_INTERVAL_SECONDS)
-
-# def user_input_listener(context, stop_event, eps, graph, mapping):
-#     import msvcrt
-#     # Logger().get_logger().info("Press 'i' to inject a random packet, 'q' to quit.")
-#     while not stop_event.is_set():
-#         if msvcrt.kbhit():
-#             key = msvcrt.getwch()
-#             # if key.lower() == 'i':
-#             #     inject_random_packets(eps, num_packets=1)
-#             #     stop_event.clear()
-#             if key.lower() == 'q':
-#                 stop_event.set()
-#                 break
-#         for execution_id in context["input_execution_id_rate"]:
-#             Logger().get_logger().warning(f"Injecting packets with execution_id percentage: {execution_id}")
-#             # Run simulation according to SIMULATION_STEPS
-#             for _ in range(context["simulation_steps"]):
-#                 # Inject packets according to the PACKAGE_INJECTION_RATE
-#                 if random.random() < execution_id:
-#                     inject_packet(eps, graph, mapping, execution_id)
-#                 time.sleep(context["injection_interval"])
-#         stop_event.set()
-#         break
-
 def get_linear_list(num_steps, end_pct=1.0):
     return np.linspace(0, end_pct, num_steps+1).tolist()[1:]
 
@@ -242,9 +194,8 @@ if __name__ == "__main__":
     # Create the context for the simulation
     context = {
         "simulation_steps": NUMBER_OF_CYCLES,
-        "input_traffic_rate": get_linear_list(20, 1.5),
-        "injection_interval": INJECTION_INTERVAL_SECONDS,
-        "mesh_size": (rows, columns)
+        "input_traffic_rate": get_linear_list(30, 1.3),
+        "mesh_size": (6,6)
     }
 
     Logger().get_logger().info("Initializing Mesh Network Simulation...")
@@ -253,40 +204,45 @@ if __name__ == "__main__":
     mesh_network.start()
     
     Logger().get_logger().info("Simulation started! Injecting packets...")
-    stop_event = threading.Event()
-    metrics_thread = threading.Thread(target=metrics_collector, args=(stop_event,), daemon=True)
-    metrics_thread.start()
 
     try:
         total_progress = len(context["input_traffic_rate"])
         # Run simulation for each input traffic rate
         for p, traffic in enumerate(context["input_traffic_rate"]):
+            # Reset the global cycle counter
+            reset()
             num_flits = int(context["simulation_steps"] * traffic)
+            mesh_network.begin_processing()
             Logger().get_logger().warning(f">>> ({p+1}/{total_progress}) Injecting {num_flits} packets ({traffic}%)")
             # Inject packets according to the PACKAGE_INJECTION_RATE
             flits_injected = inject_packet(mesh_network.eps, graph, mapping, num_flits)
-            
-            time.sleep(context["injection_interval"])
-
-            mesh_network.begin_processing()
-
             Logger().get_logger().warning(f">>> Waiting for completion of {flits_injected} packets ({traffic}%)")
             # Wait for completion
             all_done = False
             while not all_done:
+                # Advance global cycle counter (start of cycle)
+                tick()
+                # Perform a simulation step
+                mesh_network.run_step()
+                # Check metrics for arrived packets
                 metrics = [met for met in MetricsCollector().get_all_metrics() if met.get('execution_id') == num_flits and (met.get('type') == 'packet_arrived' or met.get('type') == 'packet_loss')]
                 # Get the unique packet IDs from the metrics
                 flits_caught = sum(met.get("weight", 0) for met in metrics)
                 all_done = flits_caught >= flits_injected
                 Logger().get_logger().info(f"Progress: {flits_caught}/{flits_injected} packets ({traffic}%)")
-                time.sleep(2)
 
+            Logger().get_logger().info(f"<<< ({p+1}/{total_progress}) Traffic finished in {get_cycle()} cycles")
+            MetricsCollector().push_metric({
+                'source': 'simulation',
+                "type": 'simulation_finished',
+                "execution_id": num_flits,
+                "weight": get_cycle()
+            })
             mesh_network.stop_processing()
-            Logger().get_logger().info(f"<<< Traffic finished: {traffic}%")
+    
     finally:
-        stop_event.set()
         mesh_network.stop()
-        metrics_thread.join()
+        MetricsCollector().save_metrics_to_csv()
 
     Logger().get_logger().info(f"Simulation ended. Metrics saved to {MetricsCollector().get_metrics_file_name()}. Exiting...")
     sys.exit(0)

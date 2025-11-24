@@ -1,11 +1,11 @@
 # Maximum number of elements in a income/outcome buffers
-MAX_BUFFER_SIZE = 10
+MAX_BUFFER_SIZE = 8
 
-LINK_BANDWIDTH = 100  # Maximum bandwidth (flits/cycle)
+LINK_BANDWIDTH = 80  # Maximum bandwidth (flits/cycle)
 
 FLITS_WEIGHT = 1 # Weight of each flit for metrics calculation
 
-NUMBER_OF_CYCLES = LINK_BANDWIDTH # Total number of cycles for the each simulation
+NUMBER_OF_CYCLES = 80 # Total number of cycles for the each simulation
 
 ROUTING_ALGORITHM = "XY"  # Default routing algorithm: "XY", "NEGATIVE_FIRST", "WEST_FIRST", "NORTH_LEAST", "ODD_EVEN"
 ARBITER_ALGORITHM = "ROUND_ROBIN"  # Default arbiter algorithm: "ROUND_ROBIN"
@@ -19,4 +19,4 @@ METRICS_COLLECTOR_INTERVAL_SECONDS = 10
 ENABLE_RETRY_MECHANISM = False  # Enable retry mechanism for sending packets when the queue is full
 RETRY_LIMIT = 3  # Number of retries for sending packets when the queue is full
 
-DEBUGGER_MODE = False  # Set to True to enable debugging mode
+DEBUGGER_MODE = True  # Set to True to enable debugging mode

@@ -7,26 +7,12 @@ class Network:
 
     def __init__(self, context):
         self.rows, self.columns = context["mesh_size"]
-        self.current_cycle = 0
         self.routers = {} # Dictionary to hold routers indexed by their (x, y) coordinates
         self.eps = [] # List to hold processing elements
         # Add start processing event
         self.start_processing = threading.Event()
         self.__setup_mesh()
-
-    def begin_processing(self):
-        '''
-        Set the event to start processing in all routers.
-        '''
-        self.start_processing.set()
     
-    def stop_processing(self):
-        '''
-        Clear the event to stop processing in all routers.
-        '''
-        self.start_processing.clear()
-        for r in self.routers.values():
-            r.reset_bandwidth_counters()
     
     def __setup_mesh(self):
         '''
@@ -38,7 +24,6 @@ class Network:
         for x in range(self.rows):
             for y in range(self.columns):
                 router = Router(x, y, routing_algorithm=ROUTING_ALGORITHM, arbiter_algorithm=ARBITER_ALGORITHM)
-                router.set_start_event(self.start_processing)
                 self.routers[(x, y)] = router
         
         # Set up neighbors based on the X-Y topology
@@ -64,17 +49,17 @@ class Network:
             self.eps.append(ep)
 
         return self.routers, self.eps
+    
 
     def start(self):
         '''
         Initialize Routers and Processing Elements
         '''
-        self.stop_processing()
-
         for r in self.routers.values():
             r.start()
         for ep in self.eps:
             ep.start()
+    
 
     def stop(self):
         '''
@@ -84,9 +69,33 @@ class Network:
             ep.stop()
         for r in self.routers.values():
             r.stop()
-        
-        for ep in self.eps:
-            ep.join()
-        for r in self.routers.values():
-            r.join()
+    
 
+    def begin_processing(self):
+        '''
+        Set the event to start processing in all routers.
+        '''
+        for r in self.routers.values():
+            r.start()
+        for ep in self.eps:
+            ep.start()
+    
+    
+    def stop_processing(self):
+        '''
+        Clear the event to stop processing in all routers.
+        '''
+        for r in self.routers.values():
+            r.stop()
+        for ep in self.eps:
+            ep.stop()
+    
+
+    def run_step(self):
+        '''
+        Runs a single simulation step by advancing each router and processing element by one cycle.
+        '''
+        for r in self.routers.values():
+            r.run_cycle()
+        for ep in self.eps:
+            ep.run_cycle()
