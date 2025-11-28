@@ -23,7 +23,7 @@ class Router():
 
         # Connection queues for incoming packets from neighbors and local endpoints
         self.in_queues = {
-            "local": queue.Queue(maxsize=1),                # Local queue for packets destined to this router. Allowed only 1 packet to avoid congestion.
+            "local": queue.Queue(maxsize=100),  # Local queue for packets destined to this router.
             "north": queue.Queue(maxsize=MAX_BUFFER_SIZE),  # North neighbor
             "south": queue.Queue(maxsize=MAX_BUFFER_SIZE),  # South neighbor
             "east": queue.Queue(maxsize=MAX_BUFFER_SIZE),   # East neighbor
@@ -134,10 +134,10 @@ class Router():
 
                 if original_weight is not None:
                     if self.bandwidth[next_dir] + original_weight <= LINK_BANDWIDTH:
-                        # Transmit the entire packet weight
-                        self.bandwidth[next_dir] += original_weight
                         packet.hops += 1
                         self.out_queues[next_dir].put(packet)
+                        # Transmit the entire packet weight
+                        self.bandwidth[next_dir] += original_weight
                         # Log the routing of the packet
                         MetricsCollector().push_metric({
                             'source': 'router',
@@ -167,6 +167,8 @@ class Router():
                     else:
                         # Transmit only the remaining bandwidth
                         packet.payload['weight'] = LINK_BANDWIDTH - self.bandwidth[next_dir]
+                        packet.hops += 1
+                        self.out_queues[next_dir].put(packet)
                         self.bandwidth[next_dir] += packet.payload.get("weight")
                         Logger().get_logger().debug(f"Partial bandwidth available for {next_dir} at {self.name}, transmitting packet {packet.id} W: {packet.payload.get('weight')}")
                         # Log the partial bandwidth event
@@ -193,8 +195,6 @@ class Router():
                             "execution_id": packet.payload.get("execution_id"),
                             'weight': original_weight - packet.payload.get("weight")
                         })
-                        packet.hops += 1
-                        self.out_queues[next_dir].put(packet)
                 else:
                     Logger().get_logger().critical("Packet weight not specified in payload.")
                     raise ValueError("Packet weight not specified in payload.")

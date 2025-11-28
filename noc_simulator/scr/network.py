@@ -1,5 +1,7 @@
 import threading
-from constants import ARBITER_ALGORITHM, ROUTING_ALGORITHM
+from constants import ARBITER_ALGORITHM, ROUTING_ALGORITHM, INJECTION_PATTERN
+from clock import reset, tick, get_cycle
+from packet import Packet
 from router import Router
 from processing_element import ProcessingElement
 
@@ -99,3 +101,132 @@ class Network:
             r.run_cycle()
         for ep in self.eps:
             ep.run_cycle()
+
+
+    def __inject_traffic_continuous(self, injection_rate_per_node):
+        """
+        Injects traffic into the network continuously based on the specified injection rate per node.
+        
+        Args:
+            injection_rate_per_node: flits/cycle per node (e.g., 0.5 = 1 flit every 2 cycles)
+        """
+        import random
+        
+        flits_injected = 0
+
+        for p in self.eps:
+            # Generate flits probabilistically based on the injection rate
+            if random.random() < injection_rate_per_node:
+                # Choose random destination (different from source)
+                while True:
+                    dst_ep = random.choice(self.eps)
+                    if dst_ep.position != p.position:
+                        break
+                payload = {
+                    "execution_id": injection_rate_per_node,
+                    "weight": 1
+                }
+                packet = Packet(src=p.position, dst=dst_ep.position, payload=payload) # Flit
+                
+                # Try to inject packet
+                if p.inject_packet(packet):
+                    flits_injected += 1
+
+        return flits_injected
+
+
+    def __inject_traffic_random(self, total_flits):
+        """
+        Injects a specified total number of flits into the network at random source and destination nodes.
+        
+        Args:
+            total_flits: Total number of flits to inject into the network.
+        """
+        import random
+        
+        flits_injected = 0
+
+        for _ in range(total_flits):
+            # Choose random source and destination (different)
+            while True:
+                src_ep = random.choice(self.eps)
+                dst_ep = random.choice(self.eps)
+                if dst_ep.position != src_ep.position:
+                    break
+            payload = {
+                "execution_id": total_flits,
+                "weight": 1
+            }
+            packet = Packet(src=src_ep.position, dst=dst_ep.position, payload=payload) # Flit
+            
+            # Try to inject packet
+            if src_ep.inject_packet(packet):
+                flits_injected += 1
+
+        return flits_injected
+    
+
+    def __inject_traffic_uniform(self, total_flits):
+        """
+        Injects a specified total number of flits into the network from each node uniformly to random destination nodes.
+        
+        Args:
+            total_flits: Total number of flits to inject per node into the network.
+        """
+        import random
+        
+        flits_injected = 0
+
+        for p in self.eps:
+            for _ in range(total_flits):
+                # Choose random destination (different)
+                while True:
+                    dst_ep = random.choice(self.eps)
+                    if dst_ep.position != p.position:
+                        break
+                payload = {
+                    "execution_id": total_flits,
+                    "weight": 1
+                }
+                packet = Packet(src=p.position, dst=dst_ep.position, payload=payload) # Flit
+            
+                # Try to inject packet
+                if p.inject_packet(packet):
+                    flits_injected += 1
+
+        return flits_injected
+
+    def get_injection_pattern(self):
+        algorithm = {
+            "RANDOM": self.__inject_traffic_random,
+            "CONTINUOUS": self.__inject_traffic_continuous,
+            "UNIFORM": self.__inject_traffic_uniform,
+            "TRANSPOSE": None,
+            "HOTSPOT": None
+        }.get(INJECTION_PATTERN, None)
+        if not algorithm:
+            raise Exception(f"Injection pattern '{INJECTION_PATTERN}' not implemented!")
+        else:
+            return algorithm
+
+    def run(self, injection_rate, total_cycles: int=0):
+        '''
+        Runs the network with continuous packet injection at the specified rate for a total number of cycles.
+        '''
+        # Reset the global cycle counter
+        reset()
+        
+        # Inject packets
+        num_flits_injected = self.__inject_traffic_uniform(injection_rate)
+
+        for cycle in range(total_cycles):
+            # Advance each router and processing element by one cycle
+            for ep in self.eps:
+                ep.run_cycle()
+            for r in self.routers.values():
+                r.run_cycle()
+            
+            # Advance global cycle counter (start of cycle)
+            tick()
+        
+        return num_flits_injected

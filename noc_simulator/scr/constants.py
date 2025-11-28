@@ -1,12 +1,13 @@
 # Maximum number of elements in a income/outcome buffers
-MAX_BUFFER_SIZE = 8
+MAX_BUFFER_SIZE = 4
 
-LINK_BANDWIDTH = 80  # Maximum bandwidth (flits/cycle)
+LINK_BANDWIDTH = 8 # Maximum bandwidth (flits/cycle)
 
 FLITS_WEIGHT = 1 # Weight of each flit for metrics calculation
 
-NUMBER_OF_CYCLES = 80 # Total number of cycles for the each simulation
+NUMBER_OF_CYCLES = 100 # Total number of cycles for the each simulation
 
+INJECTION_PATTERN = "UNIFORM"  # Default injection pattern: "RANDOM", "CONTINUOUS", "UNIFORM", "TRANSPOSE", "HOTSPOT"
 ROUTING_ALGORITHM = "XY"  # Default routing algorithm: "XY", "NEGATIVE_FIRST", "WEST_FIRST", "NORTH_LEAST", "ODD_EVEN"
 ARBITER_ALGORITHM = "ROUND_ROBIN"  # Default arbiter algorithm: "ROUND_ROBIN"
 

@@ -9,7 +9,7 @@ from packet import Packet
 from metrics import MetricsCollector
 from constants import (
     NUMBER_OF_CYCLES,
-    FLITS_WEIGHT
+    FLITS_WEIGHT, LINK_BANDWIDTH
 )
 
 def load_application_graph(file_path: str):
@@ -194,8 +194,9 @@ if __name__ == "__main__":
     # Create the context for the simulation
     context = {
         "simulation_steps": NUMBER_OF_CYCLES,
-        "input_traffic_rate": get_linear_list(30, 1.3),
-        "mesh_size": (6,6)
+        "input_traffic_rate": get_linear_list(10, 1.5),
+        "mesh_size": (6,6),
+        "max_number_of_flits": LINK_BANDWIDTH
     }
 
     Logger().get_logger().info("Initializing Mesh Network Simulation...")
@@ -209,27 +210,27 @@ if __name__ == "__main__":
         total_progress = len(context["input_traffic_rate"])
         # Run simulation for each input traffic rate
         for p, traffic in enumerate(context["input_traffic_rate"]):
-            # Reset the global cycle counter
-            reset()
-            num_flits = int(context["simulation_steps"] * traffic)
+            num_flits = int(context["max_number_of_flits"] * traffic)
             mesh_network.begin_processing()
             Logger().get_logger().warning(f">>> ({p+1}/{total_progress}) Injecting {num_flits} packets ({traffic}%)")
             # Inject packets according to the PACKAGE_INJECTION_RATE
-            flits_injected = inject_packet(mesh_network.eps, graph, mapping, num_flits)
-            Logger().get_logger().warning(f">>> Waiting for completion of {flits_injected} packets ({traffic}%)")
-            # Wait for completion
-            all_done = False
-            while not all_done:
-                # Advance global cycle counter (start of cycle)
-                tick()
-                # Perform a simulation step
-                mesh_network.run_step()
-                # Check metrics for arrived packets
-                metrics = [met for met in MetricsCollector().get_all_metrics() if met.get('execution_id') == num_flits and (met.get('type') == 'packet_arrived' or met.get('type') == 'packet_loss')]
-                # Get the unique packet IDs from the metrics
-                flits_caught = sum(met.get("weight", 0) for met in metrics)
-                all_done = flits_caught >= flits_injected
-                Logger().get_logger().info(f"Progress: {flits_caught}/{flits_injected} packets ({traffic}%)")
+            # flits_injected = inject_packet(mesh_network.eps, graph, mapping, num_flits)
+            # flits_injected = mesh_network.run_continuous_injection(traffic, context["simulation_steps"])
+            flits_injected = mesh_network.run(num_flits, context["simulation_steps"])
+            # Logger().get_logger().warning(f">>> Waiting for completion of {flits_injected} packets ({traffic}%)")
+            # # Wait for completion
+            # all_done = False
+            # while not all_done:
+            #     # Advance global cycle counter (start of cycle)
+            #     tick()
+            #     # Perform a simulation step
+            #     mesh_network.run_step()
+            #     # Check metrics for arrived packets
+            #     metrics = [met for met in MetricsCollector().get_all_metrics() if met.get('execution_id') == num_flits and (met.get('type') == 'packet_arrived' or met.get('type') == 'packet_loss')]
+            #     # Get the unique packet IDs from the metrics
+            #     flits_caught = sum(met.get("weight", 0) for met in metrics)
+            #     all_done = flits_caught >= flits_injected
+            #     Logger().get_logger().info(f"Progress: {flits_caught}/{flits_injected} packets ({traffic}%)")
 
             Logger().get_logger().info(f"<<< ({p+1}/{total_progress}) Traffic finished in {get_cycle()} cycles")
             MetricsCollector().push_metric({
