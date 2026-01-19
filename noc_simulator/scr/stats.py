@@ -1,0 +1,258 @@
+import json
+import pandas as pd
+import matplotlib.pyplot as plt
+import numpy as np
+import constants
+
+REGRESSION_LINE_DEGREE = 3
+
+
+def save_execution_parameters(context, metrics_folder):
+    """
+    Save the execution parameters from the context dictionary to a CSV file.
+    """
+    import os
+    p = dict(context)
+
+    os.makedirs(metrics_folder, exist_ok=True)
+    params_file = f"{metrics_folder}/execution_parameters.json"
+    p["MAX_BUFFER_SIZE"] = constants.MAX_BUFFER_SIZE
+    p["INJECTION_PATTERN"] = constants.INJECTION_PATTERN
+    p["ARBITER_ALGORITHM"] = constants.ARBITER_ALGORITHM
+    p["SELECTION_STRATEGY"] = constants.SELECTION_STRATEGY
+    p["RETRY_MECHANISM"] = constants.ENABLE_RETRY_MECHANISM
+    p["RETRY_LIMIT"] = constants.RETRY_LIMIT
+
+    json.dump(p, open(params_file, "w"), indent=2)
+    
+    return params_file
+
+
+def plot_all_algorithms_comparison(all_stats, metrics_folder, context=None):
+    """
+    Create comparison plots for all routing algorithms.
+    all_stats: dict with routing algorithm names as keys and stats dataframes as values
+    context: simulation configuration dictionary
+    """
+    fig, axes = plt.subplots(2, 2, figsize=(16, 12))
+    fig.suptitle('Simulation Statistics - All Routing Algorithms Comparison', fontsize=16, fontweight='bold')
+    
+    # Add configuration text box
+    if context:
+        save_execution_parameters(context, metrics_folder)
+        config_text = "Configuration:\n"
+        config_text += f"  Mesh Size: {context.get('mesh_size', 'N/A')}\n"
+        config_text += f"  Simulation Steps: {context.get('simulation_steps', 'N/A')}\n"
+        config_text += f"  Max Flits/Node: {context.get('max_flits_per_node', 'N/A')}\n"
+        config_text += f"  Traffic Range: {context.get('input_traffic_rate', ['N/A'])[0]:.2%} - {context.get('input_traffic_rate', ['N/A'])[-1]:.2%}"
+        
+        fig.text(0.99, 0.01, config_text, fontsize=9, ha='right', va='bottom',
+                bbox=dict(boxstyle='round', facecolor='wheat', alpha=0.3),
+                family='monospace')
+    
+    colors = {'XY': '#1f77b4', 'NEGATIVE_FIRST': '#ff7f0e', 'WEST_FIRST': '#2ca02c', 'NORTH_LEAST': '#d62728'}
+    
+    # Throughput comparison
+    for algo, stats in all_stats.items():
+        axes[0, 0].plot(range(len(stats)), stats['throughput'], marker='o', linestyle='-', 
+                       linewidth=2, label=algo, color=colors.get(algo))
+        # Add regression line
+        z = np.polyfit(range(len(stats)), stats['throughput'], REGRESSION_LINE_DEGREE)
+        p = np.poly1d(z)
+        axes[0, 0].plot(range(len(stats)), p(range(len(stats))), linestyle='--', linewidth=1.5, 
+                       color=colors.get(algo), alpha=0.7)
+    axes[0, 0].set_title('Throughput Comparison', fontsize=12, fontweight='bold')
+    axes[0, 0].set_xlabel('Traffic Rate')
+    axes[0, 0].set_ylabel('Throughput (flits/cycle)')
+    axes[0, 0].legend()
+    axes[0, 0].grid(True, alpha=0.3)
+    
+    # Latency comparison
+    for algo, stats in all_stats.items():
+        axes[0, 1].plot(range(len(stats)), stats['latency_mean'], marker='s', linestyle='-', 
+                       linewidth=2, label=algo, color=colors.get(algo))
+        # Add regression line
+        z = np.polyfit(range(len(stats)), stats['latency_mean'], REGRESSION_LINE_DEGREE)
+        p = np.poly1d(z)
+        axes[0, 1].plot(range(len(stats)), p(range(len(stats))), linestyle='--', linewidth=1.5, 
+                       color=colors.get(algo), alpha=0.7)
+    axes[0, 1].set_title('Average Latency Comparison', fontsize=12, fontweight='bold')
+    axes[0, 1].set_xlabel('Traffic Rate')
+    axes[0, 1].set_ylabel('Latency (cycles)')
+    axes[0, 1].legend()
+    axes[0, 1].grid(True, alpha=0.3)
+    
+    # Extra Delay comparison
+    for algo, stats in all_stats.items():
+        axes[1, 0].plot(range(len(stats)), stats['extra_delay'], marker='^', linestyle='-', 
+                       linewidth=2, label=algo, color=colors.get(algo))
+        # Add regression line
+        z = np.polyfit(range(len(stats)), stats['extra_delay'], REGRESSION_LINE_DEGREE)
+        p = np.poly1d(z)
+        axes[1, 0].plot(range(len(stats)), p(range(len(stats))), linestyle='--', linewidth=1.5, 
+                       color=colors.get(algo), alpha=0.7)
+    axes[1, 0].set_title('Extra Delay Comparison', fontsize=12, fontweight='bold')
+    axes[1, 0].set_xlabel('Traffic Rate')
+    axes[1, 0].set_ylabel('Extra Delay (cycles)')
+    axes[1, 0].legend()
+    axes[1, 0].grid(True, alpha=0.3)
+    
+    # Packet Loss comparison
+    x_pos = range(len(next(iter(all_stats.values()))))
+    bar_width = 0.2
+    for i, (algo, stats) in enumerate(all_stats.items()):
+        packet_loss = stats['packet_loss']
+        axes[1, 1].bar([x + i*bar_width for x in x_pos], packet_loss, bar_width, 
+                      label=algo, color=colors.get(algo), alpha=0.8)
+    axes[1, 1].set_title('Packet Loss Comparison', fontsize=12, fontweight='bold')
+    axes[1, 1].set_xlabel('Traffic Rate Index')
+    axes[1, 1].set_ylabel('Lost Packets')
+    axes[1, 1].legend()
+    axes[1, 1].grid(True, alpha=0.3, axis='y')
+    
+    plt.tight_layout()
+    
+    # Save comparison plot
+    comparison_file = f"{metrics_folder}/comparison_all_algorithms.png"
+    fig.savefig(comparison_file, dpi=100, bbox_inches='tight')
+    return comparison_file
+
+
+def analyze_and_plot_metrics(metrics_file, routing_algorithm):
+    """
+    Load metrics from CSV, calculate statistics, generate plots and return results.
+    context: simulation configuration dictionary
+    """
+    df = pd.read_csv(metrics_file)
+    
+    throughput = get_throughput(df)
+    latency = get_average_latency(df)
+    extra_delay = get_mean_extra_delay(df)
+    packet_loss = get_packet_loss(df)
+    
+    # Merge all statistics
+    stats = pd.merge(throughput, latency, on='execution_id')
+    stats = pd.merge(stats, extra_delay, on='execution_id')
+    stats = pd.merge(stats, packet_loss, on='execution_id')
+    
+    # Create visualizations
+    fig, axes = plt.subplots(2, 2, figsize=(14, 10))
+    fig.suptitle(f'Simulation Statistics - {routing_algorithm}', fontsize=16, fontweight='bold')
+
+    # Throughput
+    axes[0, 0].plot(stats['execution_id'], stats['throughput'], marker='o', linestyle='-', linewidth=2)
+    # Add regression line
+    z = np.polyfit(range(len(stats)), stats['throughput'], REGRESSION_LINE_DEGREE)
+    p = np.poly1d(z)
+    axes[0, 0].plot(range(len(stats)), p(range(len(stats))), linestyle='--', linewidth=2, color='red', alpha=0.7, label='Trend')
+    axes[0, 0].set_title('Throughput')
+    axes[0, 0].set_xlabel('Traffic Rate')
+    axes[0, 0].set_ylabel('Throughput (flits/cycle)')
+    axes[0, 0].legend()
+    axes[0, 0].grid(True, alpha=0.3)
+    
+    # Latency
+    # axes[0, 1].plot(stats['execution_id'], stats['latency_mean'], marker='s', linestyle='-', linewidth=2, color='orange')
+    # Add regression line
+    z = np.polyfit(range(len(stats)), stats['latency_mean'], REGRESSION_LINE_DEGREE)
+    p = np.poly1d(z)
+    axes[0, 1].plot(range(len(stats)), p(range(len(stats))), linestyle='--', linewidth=2, color='red', alpha=0.7, label='Trend')
+    axes[0, 1].set_title('Average Latency')
+    axes[0, 1].set_xlabel('Traffic Rate')
+    axes[0, 1].set_ylabel('Latency (cycles)')
+    axes[0, 1].legend()
+    axes[0, 1].grid(True, alpha=0.3)
+    
+    # Extra Delay
+    # axes[1, 0].plot(stats['execution_id'], stats['extra_delay'], marker='^', linestyle='-', linewidth=2, color='green')
+    # Add regression line
+    z = np.polyfit(range(len(stats)), stats['extra_delay'], REGRESSION_LINE_DEGREE)
+    p = np.poly1d(z)
+    axes[1, 0].plot(range(len(stats)), p(range(len(stats))), linestyle='--', linewidth=2, color='red', alpha=0.7, label='Trend')
+    axes[1, 0].set_title('Extra Delay')
+    axes[1, 0].set_xlabel('Traffic Rate')
+    axes[1, 0].set_ylabel('Extra Delay (cycles)')
+    axes[1, 0].legend()
+    axes[1, 0].grid(True, alpha=0.3)
+    
+    # Packet Loss
+    axes[1, 1].bar(range(len(stats)), stats['packet_loss'], color='red', alpha=0.7)
+    axes[1, 1].set_title('Packet Loss')
+    axes[1, 1].set_xlabel('Traffic Rate Index')
+    axes[1, 1].set_ylabel('Lost Packets')
+    axes[1, 1].grid(True, alpha=0.3, axis='y')
+    
+    plt.tight_layout()
+    return stats, fig
+
+
+def get_throughput(df):
+    '''
+    Calculate throughput as the number of arrived flits divided by the total cycles taken for each execution_id.
+    '''
+    cycles = df[df['type'] == 'packet_arrived'].groupby('execution_id').max()['cycles'].reset_index(name='cycles')
+    arrived_flit = df[df['type'] == 'packet_arrived'].groupby('execution_id').count()['packet_id'].reset_index(name='arrived_flits')
+    stats = pd.merge(cycles, arrived_flit, on='execution_id')
+    stats['throughput'] = stats['arrived_flits'] / stats['cycles']
+    return stats[['execution_id', 'throughput']]
+
+
+def get_average_latency(df):
+    '''
+    Calculate the average latency for each execution_id.
+    '''
+    df_injected = df[df['type'] == 'packet_sent'].copy()
+    # Get the latency mean
+    df_arrived = df[df['type'] == 'packet_arrived'].copy()
+
+    df_diff_cycles = pd.merge(
+        df_arrived[['packet_id', 'cycles', 'execution_id']],
+        df_injected[['packet_id', 'cycles', 'execution_id']],
+        on=['packet_id', 'execution_id'],
+        suffixes=('_arrived', '_injected')
+    )
+    df_diff_cycles['cycles'] = df_diff_cycles['cycles_arrived'] - df_diff_cycles['cycles_injected']
+    # Get the latency mean
+    return df_diff_cycles.groupby(['execution_id']).agg({'cycles': 'mean'}).reset_index().rename(columns={'cycles': 'latency_mean'})
+
+
+def get_mean_extra_delay(df):
+    '''
+    Calculate the mean extra delay for each execution_id.
+    Extra delay is defined as the difference between the mean latency and the minimum latency for packets of
+    the same execution_id.
+    '''
+    df_injected = df[df['type'] == 'packet_sent'].copy()
+    df_arrived = df[df['type'] == 'packet_arrived'].copy()
+    
+    df_diff_cycles = pd.merge(
+        df_arrived[['packet_id', 'cycles', 'execution_id']],
+        df_injected[['packet_id', 'cycles', 'execution_id']],
+        on=['packet_id', 'execution_id'],
+        suffixes=('_arrived', '_injected')
+    )
+    # Get the latency for each packet
+    df_diff_cycles['cycles'] = df_diff_cycles['cycles_arrived'] - df_diff_cycles['cycles_injected']
+    # Get min and mean latency per execution_id
+    latency_stats = df_diff_cycles.groupby('execution_id')['cycles'].agg(['min', 'mean']).reset_index()
+    latency_stats['extra_delay'] = latency_stats['mean'] - latency_stats['min']
+    return latency_stats[['execution_id', 'extra_delay']]
+
+
+def get_packet_loss(df):
+    '''
+    Calculate packet loss for each execution_id.
+    '''
+    df_injected = df[df['type'] == 'packet_sent'].copy()
+    df_arrived = df[df['type'] == 'packet_arrived'].copy()
+    
+    df_total_injected = df_injected.groupby('execution_id').size().reset_index(name='total_injected')
+    df_total_arrived = df_arrived.groupby('execution_id').size().reset_index(name='total_arrived')
+
+    df_packet_loss = pd.merge(
+        df_total_arrived[['execution_id', 'total_arrived']],
+        df_total_injected[['execution_id', 'total_injected']],
+        on='execution_id'
+    )
+    df_packet_loss['packet_loss'] = df_packet_loss['total_injected'] - df_packet_loss['total_arrived']
+    return df_packet_loss[['execution_id', 'packet_loss']]

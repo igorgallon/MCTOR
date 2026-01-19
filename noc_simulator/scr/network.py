@@ -1,22 +1,36 @@
+import random
+from logger import Logger
 import threading
-from constants import ARBITER_ALGORITHM, ROUTING_ALGORITHM, INJECTION_PATTERN
-from clock import reset, tick, get_cycle
+from constants import (
+    FLITS_WEIGHT,
+    ARBITER_ALGORITHM,
+    ROUTING_ALGORITHM,
+    INJECTION_PATTERN,
+    SELECTION_STRATEGY
+)
+from clock import reset, tick
+from metrics import MetricsCollector
 from packet import Packet
 from router import Router
 from processing_element import ProcessingElement
 
 class Network:
 
-    def __init__(self, context):
+    def __init__(self, context, routing_algorithm=ROUTING_ALGORITHM, arbiter_algorithm=ARBITER_ALGORITHM, selection_strategy=SELECTION_STRATEGY):
+        '''
+        Initializes a Network instance based on the provided context.
+            :param context: A dictionary containing network configuration parameters such as mesh size.
+        '''
         self.rows, self.columns = context["mesh_size"]
         self.routers = {} # Dictionary to hold routers indexed by their (x, y) coordinates
         self.eps = [] # List to hold processing elements
         # Add start processing event
         self.start_processing = threading.Event()
-        self.__setup_mesh()
+        self.__execution_id = 0
+        self.__setup_mesh(routing_algorithm, arbiter_algorithm, selection_strategy)
     
     
-    def __setup_mesh(self):
+    def __setup_mesh(self, routing_algorithm, arbiter_algorithm, selection_strategy):
         '''
         Creates a network of routers and processing elements based on the specified rows and columns.
         Each router is connected to its neighbors using the X-Y topology and it has a local queue for
@@ -25,7 +39,7 @@ class Network:
         # Create routers for each coordinate in the specified rows and columns
         for x in range(self.rows):
             for y in range(self.columns):
-                router = Router(x, y, routing_algorithm=ROUTING_ALGORITHM, arbiter_algorithm=ARBITER_ALGORITHM)
+                router = Router(x, y, routing_algorithm=routing_algorithm, arbiter_algorithm=arbiter_algorithm, selection_strategy=selection_strategy)
                 self.routers[(x, y)] = router
         
         # Set up neighbors based on the X-Y topology
@@ -57,6 +71,7 @@ class Network:
         '''
         Initialize Routers and Processing Elements
         '''
+        self.__execution_id = 0
         for r in self.routers.values():
             r.start()
         for ep in self.eps:
@@ -123,7 +138,7 @@ class Network:
                     if dst_ep.position != p.position:
                         break
                 payload = {
-                    "execution_id": injection_rate_per_node,
+                    "execution_id": self.__execution_id,
                     "weight": 1
                 }
                 packet = Packet(src=p.position, dst=dst_ep.position, payload=payload) # Flit
@@ -135,7 +150,7 @@ class Network:
         return flits_injected
 
 
-    def __inject_traffic_random(self, total_flits):
+    def __inject_traffic_random(self):
         """
         Injects a specified total number of flits into the network at random source and destination nodes.
         
@@ -146,21 +161,22 @@ class Network:
         
         flits_injected = 0
 
-        for _ in range(total_flits):
+        payload = {
+            "execution_id": self.__execution_id,
+            "weight": 1
+        }
+        
+        for p in self.eps:
             # Choose random source and destination (different)
             while True:
-                src_ep = random.choice(self.eps)
                 dst_ep = random.choice(self.eps)
-                if dst_ep.position != src_ep.position:
+                if dst_ep.position != p.position:
                     break
-            payload = {
-                "execution_id": total_flits,
-                "weight": 1
-            }
-            packet = Packet(src=src_ep.position, dst=dst_ep.position, payload=payload) # Flit
+
+            packet = Packet(src=p.position, dst=dst_ep.position, payload=payload) # Flit
             
             # Try to inject packet
-            if src_ep.inject_packet(packet):
+            if p.inject_packet(packet):
                 flits_injected += 1
 
         return flits_injected
@@ -177,6 +193,11 @@ class Network:
         
         flits_injected = 0
 
+        payload = {
+            "execution_id": self.__execution_id,
+            "weight": FLITS_WEIGHT
+        }
+
         for p in self.eps:
             for _ in range(total_flits):
                 # Choose random destination (different)
@@ -184,10 +205,6 @@ class Network:
                     dst_ep = random.choice(self.eps)
                     if dst_ep.position != p.position:
                         break
-                payload = {
-                    "execution_id": total_flits,
-                    "weight": 1
-                }
                 packet = Packet(src=p.position, dst=dst_ep.position, payload=payload) # Flit
             
                 # Try to inject packet
@@ -201,6 +218,7 @@ class Network:
             "RANDOM": self.__inject_traffic_random,
             "CONTINUOUS": self.__inject_traffic_continuous,
             "UNIFORM": self.__inject_traffic_uniform,
+            "SHUFFLE": None,
             "TRANSPOSE": None,
             "HOTSPOT": None
         }.get(INJECTION_PATTERN, None)
@@ -209,24 +227,52 @@ class Network:
         else:
             return algorithm
 
-    def run(self, injection_rate, total_cycles: int=0):
+
+    def __run_one_cycle(self):
+        '''
+        Runs a single cycle of the network by advancing each router and processing element by one cycle.
+        '''
+        for ep in self.eps:
+            ep.run_cycle()
+        for r in self.routers.values():
+            r.run_cycle()
+        # Advance global cycle counter (start of cycle)
+        tick()
+    
+    
+    def run(self, injection_rate, max_flits_per_node, total_cycles: int=0):
         '''
         Runs the network with continuous packet injection at the specified rate for a total number of cycles.
         '''
         # Reset the global cycle counter
         reset()
-        
-        # Inject packets
-        num_flits_injected = self.__inject_traffic_uniform(injection_rate)
+        self.__execution_id = injection_rate
+        num_flits_injected = 0
 
-        for cycle in range(total_cycles):
-            # Advance each router and processing element by one cycle
-            for ep in self.eps:
-                ep.run_cycle()
-            for r in self.routers.values():
-                r.run_cycle()
-            
-            # Advance global cycle counter (start of cycle)
-            tick()
+        if total_cycles <= 0:
+            # Inject packets once at the beginning
+            total_flits = int(injection_rate * max_flits_per_node)
+            num_flits_injected = self.__inject_traffic_uniform(total_flits)
         
-        return num_flits_injected
+            Logger().get_logger().warning(f">>> Waiting for completion of {num_flits_injected} flits ({round(injection_rate*100, 2)}%)")
+            # Wait for completion
+            all_done = False
+            while not all_done:
+                self.__run_one_cycle()
+                metrics = [m for m in MetricsCollector().get_all_metrics() if m.get('execution_id') == self.__execution_id and (m.get('type') == 'packet_arrived' or m.get('type') == 'packet_loss')]
+                flits_caught = sum(m.get("weight", 0) for m in metrics)
+                all_done = flits_caught >= num_flits_injected
+                Logger().get_logger().info(f"Progress: {flits_caught}/{num_flits_injected} flits ({round(injection_rate*100, 2)}%)")
+                total_cycles += 1
+        else:
+            for _ in range(total_cycles):
+                # Generate flits probabilistically based on the injection rate
+                if random.random() <= injection_rate:
+                    # Inject packets on each cycle
+                    total_flits = int(injection_rate * max_flits_per_node)
+                    num_flits_injected = self.__inject_traffic_random()
+                self.__run_one_cycle()
+        
+        # self.__execution_id += 1
+
+        return num_flits_injected, total_cycles

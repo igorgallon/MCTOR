@@ -1,16 +1,15 @@
 import os
-import random
 import sys
 import numpy as np
-from clock import reset, tick, get_cycle
+from clock import get_cycle
 from logger import Logger
 from network import Network
-from packet import Packet
 from metrics import MetricsCollector
+from stats import analyze_and_plot_metrics, plot_all_algorithms_comparison
 from constants import (
-    NUMBER_OF_CYCLES,
-    FLITS_WEIGHT, LINK_BANDWIDTH
+NUMBER_OF_CYCLES
 )
+import matplotlib.pyplot as plt
 
 def load_application_graph(file_path: str):
     """
@@ -57,11 +56,6 @@ def load_application_graph(file_path: str):
                     continue
                 src, dst, weight = parts
                 graph.append({"source": int(src), "target": int(dst), "weight": float(weight)})
-    # else:
-    #     for line in graph_data.splitlines():
-    #     if line.strip():
-    #         src, dst = line.split()
-    #         graph.setdefault(src, []).append(dst)
 
     return num_tasks, graph
 
@@ -91,41 +85,8 @@ def load_tasks_mapping(file_path: str):
 
     return rows, columns, mapping
 
-def inject_packet(eps, graph, mapping, num_flits) -> int:
-    """
-    Injects a packet to all active EPs based on the input traffic rate.
-    """
-    flits_injected = 0
-    # for v in graph:
-    #     src_ep = eps[mapping[v["source"]]]
-    #     dst_ep = eps[mapping[v["target"]]]
-    #     payload = {
-    #         "execution_id": execution_id,
-    #         "weight": v["weight"]
-    #     }
-    #     pkt = Packet(src=src_ep.position, dst=dst_ep.position, payload=payload)
-    #     src_ep.inject_packet(pkt)
-    #     packets_injected += 1
-
-    # Inject packets to all EPs randomly
-    # for _ in range(num_packets):
-    packet_weight = FLITS_WEIGHT * num_flits
-    for ep in eps:
-        dst_ep = random.choice(eps)
-        while dst_ep == ep:
-            dst_ep = random.choice(eps)
-        payload = {
-            "execution_id": num_flits,
-            "weight": packet_weight
-        }
-        pkt = Packet(src=ep.position, dst=dst_ep.position, payload=payload) # Flit
-        if ep.inject_packet(pkt):
-            flits_injected += packet_weight
-
-    return flits_injected
-
-def get_linear_list(num_steps, end_pct=1.0):
-    return np.linspace(0, end_pct, num_steps+1).tolist()[1:]
+def get_linear_list(num_steps, init_pct=0.0, end_pct=1.0):
+    return np.linspace(init_pct, end_pct, num_steps+1).tolist()[1:]
 
 """
 
@@ -159,6 +120,18 @@ Test1: Comparação com os resultados do Khan Tahir
  - Comparar métricas (tamanho do GRID, buffer size, número de ciclos, etc)
 
 Test2: Comparação de diferentes, algoritmos que vieram do MCTOR Matlab
+-------------------------------
+Artigo IEEE:
+
+> Só do simulador NoC em python
+
+Comparação 1:
+    Artigo Noxim (Zhi Cheng) com diferentes roteamentos, falar que experimentos deram parecidos/curvas.
+    Apontar as diferenças entre o Noxim e o nosso: python, mais flexivel, etc.
+    AI: Ver se tem como normalizar os resultados para fazer comparação 
+
+Comparação 2:
+    Pegar os mapeamentos dos benchmarks do artigo Morphological e comparar Energia/FaultTolerance no NoC simulator
 
 -------------------------------------------------------------------
 
@@ -193,57 +166,89 @@ if __name__ == "__main__":
     
     # Create the context for the simulation
     context = {
-        "simulation_steps": NUMBER_OF_CYCLES,
-        "input_traffic_rate": get_linear_list(10, 1.5),
+        "simulation_steps": NUMBER_OF_CYCLES, # 0 means run until all packets are delivered
+        "input_traffic_rate": get_linear_list(num_steps=20, init_pct=0.0, end_pct=0.1),
         "mesh_size": (6,6),
-        "max_number_of_flits": LINK_BANDWIDTH
+        "max_flits_per_node": 10000
     }
 
-    Logger().get_logger().info("Initializing Mesh Network Simulation...")
-    Logger().get_logger().info(f"Configuration: {context}")
-    mesh_network = Network(context=context)
-    mesh_network.start()
+    routing_algorithms = ["XY", "NEGATIVE_FIRST", "WEST_FIRST", "NORTH_LEAST"]#, "ODD_EVEN"]
+    # routing_algorithms = ["ODD_EVEN"]
     
-    Logger().get_logger().info("Simulation started! Injecting packets...")
+    all_stats = {}  # Store statistics for all routing algorithms
 
-    try:
-        total_progress = len(context["input_traffic_rate"])
-        # Run simulation for each input traffic rate
-        for p, traffic in enumerate(context["input_traffic_rate"]):
-            num_flits = int(context["max_number_of_flits"] * traffic)
-            mesh_network.begin_processing()
-            Logger().get_logger().warning(f">>> ({p+1}/{total_progress}) Injecting {num_flits} packets ({traffic}%)")
-            # Inject packets according to the PACKAGE_INJECTION_RATE
-            # flits_injected = inject_packet(mesh_network.eps, graph, mapping, num_flits)
-            # flits_injected = mesh_network.run_continuous_injection(traffic, context["simulation_steps"])
-            flits_injected = mesh_network.run(num_flits, context["simulation_steps"])
-            # Logger().get_logger().warning(f">>> Waiting for completion of {flits_injected} packets ({traffic}%)")
-            # # Wait for completion
-            # all_done = False
-            # while not all_done:
-            #     # Advance global cycle counter (start of cycle)
-            #     tick()
-            #     # Perform a simulation step
-            #     mesh_network.run_step()
-            #     # Check metrics for arrived packets
-            #     metrics = [met for met in MetricsCollector().get_all_metrics() if met.get('execution_id') == num_flits and (met.get('type') == 'packet_arrived' or met.get('type') == 'packet_loss')]
-            #     # Get the unique packet IDs from the metrics
-            #     flits_caught = sum(met.get("weight", 0) for met in metrics)
-            #     all_done = flits_caught >= flits_injected
-            #     Logger().get_logger().info(f"Progress: {flits_caught}/{flits_injected} packets ({traffic}%)")
+    for r in routing_algorithms:
 
-            Logger().get_logger().info(f"<<< ({p+1}/{total_progress}) Traffic finished in {get_cycle()} cycles")
-            MetricsCollector().push_metric({
-                'source': 'simulation',
-                "type": 'simulation_finished',
-                "execution_id": num_flits,
-                "weight": get_cycle()
-            })
-            mesh_network.stop_processing()
+        Logger().get_logger().info("Initializing Mesh Network Simulation...")
+        Logger().get_logger().info(f"Configuration: {context}")
+        Logger().get_logger().info(f"Routing Algorithm: {r}")
+        mesh_network = Network(context=context, routing_algorithm=r)
+        mesh_network.start()
+        
+        Logger().get_logger().info("Simulation started! Injecting flits...")
+
+        try:
+            total_progress = len(context["input_traffic_rate"])
+            # Run simulation for each input traffic rate
+            for p, traffic in enumerate(context["input_traffic_rate"]):
+                
+                Logger().get_logger().info(f">>> ({p+1}/{total_progress}) Injecting flits ({round(traffic*100, 2)}%)")
+                
+                mesh_network.begin_processing()
+
+                flits_injected, cycles_taken = mesh_network.run(injection_rate=traffic, max_flits_per_node=context["max_flits_per_node"], total_cycles=context["simulation_steps"])
+
+                Logger().get_logger().info(f"<<< ({p+1}/{total_progress}) Traffic finished in {cycles_taken} cycles")
+                MetricsCollector().push_metric({
+                    'source': 'simulation',
+                    "type": 'simulation_finished',
+                    "execution_id": traffic,
+                    "weight": get_cycle()
+                })
+                mesh_network.stop_processing()
+        
+        finally:
+            mesh_network.stop()
+            metrics_file = MetricsCollector().save_metrics_to_csv(suffix=r)
+            
+            # Analyze statistics (without displaying individual plots yet)
+            try:
+                Logger().get_logger().info(f"Analyzing statistics for {r} routing algorithm...")
+                stats, fig = analyze_and_plot_metrics(metrics_file, r)
+                all_stats[r] = stats  # Store for later comparison
+                
+                # Save the individual figure
+                plot_file = metrics_file.replace('.csv', '_analysis.png')
+                fig.savefig(plot_file, dpi=100, bbox_inches='tight')
+                Logger().get_logger().info(f"Plot saved to {plot_file}")
+                plt.close(fig)  # Close to free memory
+                
+            except Exception as e:
+                Logger().get_logger().warning(f"Error analyzing statistics for {r}: {e}")
+            
+            del mesh_network
     
-    finally:
-        mesh_network.stop()
-        MetricsCollector().save_metrics_to_csv()
-
-    Logger().get_logger().info(f"Simulation ended. Metrics saved to {MetricsCollector().get_metrics_file_name()}. Exiting...")
+    # Create and display comparison plots after all simulations complete
+    if all_stats:
+        Logger().get_logger().info("Creating comparison plots for all routing algorithms...")
+        try:
+            comparison_file = plot_all_algorithms_comparison(all_stats, MetricsCollector().get_metrics_folder(), context)
+            Logger().get_logger().info(f"Comparison plot saved to {comparison_file}")
+            
+            # Display summary table
+            Logger().get_logger().info(f"\n{'='*80}")
+            Logger().get_logger().info("FINAL STATISTICS SUMMARY")
+            Logger().get_logger().info(f"{'='*80}\n")
+            for algo, stats in all_stats.items():
+                Logger().get_logger().info(f"\n{algo}:")
+                Logger().get_logger().info(f"  Throughput:   {stats['throughput'].min():.4f} - {stats['throughput'].max():.4f}")
+                Logger().get_logger().info(f"  Latency:      {stats['latency_mean'].min():.2f} - {stats['latency_mean'].max():.2f} cycles")
+                Logger().get_logger().info(f"  Extra Delay:  {stats['extra_delay'].min():.2f} - {stats['extra_delay'].max():.2f} cycles")
+                Logger().get_logger().info(f"  Packet Loss:  {stats['packet_loss'].sum():.0f} total")
+            Logger().get_logger().info(f"{'='*80}\n")
+            
+            # Show all comparison plots
+            plt.show()
+        except Exception as e:
+            Logger().get_logger().warning(f"Error creating comparison plots: {e}")
     sys.exit(0)

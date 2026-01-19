@@ -1,4 +1,3 @@
-from datetime import datetime
 import logging
 from constants import DEBUGGER_MODE
 
@@ -40,7 +39,7 @@ class Logger:
     
     def __init__(self):
         # create logger with 'spam_application'
-        self.logger = logging.getLogger("My_app")
+        self.logger = logging.getLogger("NoCSimulatorLogger")
         # Enable/disable Debug logs
         if DEBUGGER_MODE:
             self.logger.setLevel(logging.DEBUG)
@@ -53,6 +52,7 @@ class Logger:
         ch.setFormatter(CustomFormatter())
 
         self.logger.addHandler(ch)
+
 
     def get_logger(self):
         return self.logger

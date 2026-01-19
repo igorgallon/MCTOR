@@ -59,7 +59,7 @@ class ProcessingElement:
                     retry_count = 0
                     while retry_count < RETRY_LIMIT:
                         time.sleep(PE_SLEEP_RETRY_SECONDS)
-                        Logger().get_logger().warning(f"{self.name}  Outgoing queue is full, retrying to inject Packet {p.id}...")
+                        Logger().get_logger().debug(f"{self.name} Outgoing queue is full, retrying to inject Packet {p.id}...")
                         if not self.out_router_queue.full():
                             self.out_router_queue.put(p)
                             self.packets_sent += 1
@@ -79,7 +79,7 @@ class ProcessingElement:
                         retry_count += 1
                     
                     if retry_count >= RETRY_LIMIT:
-                        Logger().get_logger().error(f"{self.name} Failed to inject Packet {p.id} after {retry_count} retries.")
+                        Logger().get_logger().debug(f"{self.name} Failed to inject Packet {p.id} after {retry_count} retries.")
                         MetricsCollector().push_metric({
                             'source': 'router',
                             'id': self.name,
@@ -90,7 +90,7 @@ class ProcessingElement:
                         })
                     
                 else:
-                    Logger().get_logger().error(f"{self.name} Outgoing queue is full, cannot inject Packet {p.id}.")
+                    Logger().get_logger().debug(f"{self.name} Outgoing queue is full, cannot inject Packet {p.id}.")
                     MetricsCollector().push_metric({
                         'source': 'router',
                         'id': self.name,

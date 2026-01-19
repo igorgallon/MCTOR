@@ -56,3 +56,6 @@ class Packet:
             "execution_id": self.payload.get("execution_id"),
             "weight": self.payload.get("weight")
         })
+
+    def __str__(self):
+        return f"Packet(id={self.id}, src={self.src}, dst={self.dst}, payload={self.payload}, hops={self.hops}, creation_time={self.creation_time}, deliver_time={self.deliver_time})"
