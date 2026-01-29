@@ -181,6 +181,34 @@ class Network:
 
         return flits_injected
     
+    def __inject_traffic_mapped_tasks(self, graph, map):
+        """
+        Injects traffic into the network based on a given task graph and mapping of tasks to processing elements.
+        
+        Args:
+            graph: The task graph.
+            map: The mapping of tasks to processing elements.
+        """
+
+        flits_injected = 0
+
+        # For each vertex in the graph, inject packets to its neighbors based on the mapping
+        for v in graph:
+            payload = {
+                "execution_id": self.__execution_id,
+                "weight": v.get("weight", 1)
+            }
+            # Get source and destination processing elements based on the mapping
+            src_ep = self.eps[map[v["source"]]]
+            dst_ep = self.eps[map[v["target"]]]
+            # Create packet
+            packet = Packet(src=src_ep.position, dst=dst_ep.position, payload=payload) # Flit
+            # Try to inject packet
+            if src_ep.inject_packet(packet):
+                flits_injected += 1
+
+        return flits_injected
+
 
     def __inject_traffic_uniform(self, total_flits):
         """
@@ -240,7 +268,7 @@ class Network:
         tick()
     
     
-    def run(self, injection_rate, max_flits_per_node, total_cycles: int=0):
+    def run(self, injection_rate, max_flits_per_node, total_cycles: int=0, graph=None, mapping=None):
         '''
         Runs the network with continuous packet injection at the specified rate for a total number of cycles.
         '''
@@ -270,7 +298,10 @@ class Network:
                 if random.random() <= injection_rate:
                     # Inject packets on each cycle
                     total_flits = int(injection_rate * max_flits_per_node)
-                    num_flits_injected = self.__inject_traffic_random()
+                    if graph and mapping:
+                        num_flits_injected = self.__inject_traffic_mapped_tasks(graph, mapping)
+                    else:
+                        num_flits_injected = self.__inject_traffic_random()
                 self.__run_one_cycle()
         
         # self.__execution_id += 1

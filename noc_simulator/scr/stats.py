@@ -28,12 +28,67 @@ def save_execution_parameters(context, metrics_folder):
     return params_file
 
 
+def _plot_throughput_comparison(ax, all_stats, colors, title_fontsize=12, is_individual=False):
+    """Helper function to plot throughput comparison"""
+    for algo, stats in all_stats.items():
+        ax.plot(range(len(stats)), stats['throughput'], marker='o', linestyle='-', 
+               linewidth=2, label=algo, color=colors.get(algo))
+    ax.set_title('Throughput Comparison', fontsize=title_fontsize, fontweight='bold')
+    ax.set_xlabel('Traffic Rate Index')
+    ax.set_ylabel('Throughput (flits/cycle)')
+    ax.legend()
+    ax.grid(True, alpha=0.3)
+
+
+def _plot_latency_comparison(ax, all_stats, colors, title_fontsize=12, is_individual=False):
+    """Helper function to plot latency comparison"""
+    for algo, stats in all_stats.items():
+        ax.plot(range(len(stats)), stats['latency_mean'], marker='s', linestyle='-', 
+               linewidth=2, label=algo, color=colors.get(algo))
+    ax.set_title('Average Latency Comparison', fontsize=title_fontsize, fontweight='bold')
+    ax.set_xlabel('Traffic Rate Index')
+    ax.set_ylabel('Latency (cycles)')
+    ax.legend()
+    ax.grid(True, alpha=0.3)
+
+
+def _plot_extra_delay_comparison(ax, all_stats, colors, title_fontsize=12, is_individual=False):
+    """Helper function to plot extra delay comparison"""
+    for algo, stats in all_stats.items():
+        ax.plot(range(len(stats)), stats['extra_delay'], marker='^', linestyle='-', 
+               linewidth=2, label=algo, color=colors.get(algo))
+    ax.set_title('Extra Delay Comparison', fontsize=title_fontsize, fontweight='bold')
+    ax.set_xlabel('Traffic Rate Index')
+    ax.set_ylabel('Extra Delay (cycles)')
+    ax.legend()
+    ax.grid(True, alpha=0.3)
+
+
+def _plot_packet_loss_comparison(ax, all_stats, colors, title_fontsize=12, is_individual=False):
+    """Helper function to plot packet loss comparison"""
+    for algo, stats in all_stats.items():
+        ax.plot(range(len(stats)), stats['packet_loss'], marker='^', linestyle='-', 
+               linewidth=2, label=algo, color=colors.get(algo))
+        # z = np.polyfit(range(len(stats)), stats['packet_loss'], REGRESSION_LINE_DEGREE)
+        # p = np.poly1d(z)
+        # ax.plot(range(len(stats)), p(range(len(stats))), linestyle='-', linewidth=2, 
+        #        label=algo, color=colors.get(algo))
+    ax.set_title('Packet Loss Comparison', fontsize=title_fontsize, fontweight='bold')
+    ax.set_xlabel('Traffic Rate Index')
+    ax.set_ylabel('Lost Packets')
+    ax.legend()
+    ax.grid(True, alpha=0.3)
+
+
 def plot_all_algorithms_comparison(all_stats, metrics_folder, context=None):
     """
     Create comparison plots for all routing algorithms.
     all_stats: dict with routing algorithm names as keys and stats dataframes as values
     context: simulation configuration dictionary
     """
+    colors = {'XY': '#1f77b4', 'NEGATIVE_FIRST': '#ff7f0e', 'WEST_FIRST': '#2ca02c', 'NORTH_LEAST': '#d62728'}
+    
+    # Create combined 2x2 comparison plot
     fig, axes = plt.subplots(2, 2, figsize=(16, 12))
     fig.suptitle('Simulation Statistics - All Routing Algorithms Comparison', fontsize=16, fontweight='bold')
     
@@ -50,71 +105,44 @@ def plot_all_algorithms_comparison(all_stats, metrics_folder, context=None):
                 bbox=dict(boxstyle='round', facecolor='wheat', alpha=0.3),
                 family='monospace')
     
-    colors = {'XY': '#1f77b4', 'NEGATIVE_FIRST': '#ff7f0e', 'WEST_FIRST': '#2ca02c', 'NORTH_LEAST': '#d62728'}
-    
-    # Throughput comparison
-    for algo, stats in all_stats.items():
-        axes[0, 0].plot(range(len(stats)), stats['throughput'], marker='o', linestyle='-', 
-                       linewidth=2, label=algo, color=colors.get(algo))
-        # Add regression line
-        z = np.polyfit(range(len(stats)), stats['throughput'], REGRESSION_LINE_DEGREE)
-        p = np.poly1d(z)
-        axes[0, 0].plot(range(len(stats)), p(range(len(stats))), linestyle='--', linewidth=1.5, 
-                       color=colors.get(algo), alpha=0.7)
-    axes[0, 0].set_title('Throughput Comparison', fontsize=12, fontweight='bold')
-    axes[0, 0].set_xlabel('Traffic Rate')
-    axes[0, 0].set_ylabel('Throughput (flits/cycle)')
-    axes[0, 0].legend()
-    axes[0, 0].grid(True, alpha=0.3)
-    
-    # Latency comparison
-    for algo, stats in all_stats.items():
-        axes[0, 1].plot(range(len(stats)), stats['latency_mean'], marker='s', linestyle='-', 
-                       linewidth=2, label=algo, color=colors.get(algo))
-        # Add regression line
-        z = np.polyfit(range(len(stats)), stats['latency_mean'], REGRESSION_LINE_DEGREE)
-        p = np.poly1d(z)
-        axes[0, 1].plot(range(len(stats)), p(range(len(stats))), linestyle='--', linewidth=1.5, 
-                       color=colors.get(algo), alpha=0.7)
-    axes[0, 1].set_title('Average Latency Comparison', fontsize=12, fontweight='bold')
-    axes[0, 1].set_xlabel('Traffic Rate')
-    axes[0, 1].set_ylabel('Latency (cycles)')
-    axes[0, 1].legend()
-    axes[0, 1].grid(True, alpha=0.3)
-    
-    # Extra Delay comparison
-    for algo, stats in all_stats.items():
-        axes[1, 0].plot(range(len(stats)), stats['extra_delay'], marker='^', linestyle='-', 
-                       linewidth=2, label=algo, color=colors.get(algo))
-        # Add regression line
-        z = np.polyfit(range(len(stats)), stats['extra_delay'], REGRESSION_LINE_DEGREE)
-        p = np.poly1d(z)
-        axes[1, 0].plot(range(len(stats)), p(range(len(stats))), linestyle='--', linewidth=1.5, 
-                       color=colors.get(algo), alpha=0.7)
-    axes[1, 0].set_title('Extra Delay Comparison', fontsize=12, fontweight='bold')
-    axes[1, 0].set_xlabel('Traffic Rate')
-    axes[1, 0].set_ylabel('Extra Delay (cycles)')
-    axes[1, 0].legend()
-    axes[1, 0].grid(True, alpha=0.3)
-    
-    # Packet Loss comparison
-    x_pos = range(len(next(iter(all_stats.values()))))
-    bar_width = 0.2
-    for i, (algo, stats) in enumerate(all_stats.items()):
-        packet_loss = stats['packet_loss']
-        axes[1, 1].bar([x + i*bar_width for x in x_pos], packet_loss, bar_width, 
-                      label=algo, color=colors.get(algo), alpha=0.8)
-    axes[1, 1].set_title('Packet Loss Comparison', fontsize=12, fontweight='bold')
-    axes[1, 1].set_xlabel('Traffic Rate Index')
-    axes[1, 1].set_ylabel('Lost Packets')
-    axes[1, 1].legend()
-    axes[1, 1].grid(True, alpha=0.3, axis='y')
+    # Plot to combined figure
+    _plot_throughput_comparison(axes[0, 0], all_stats, colors, title_fontsize=12)
+    _plot_latency_comparison(axes[0, 1], all_stats, colors, title_fontsize=12)
+    _plot_extra_delay_comparison(axes[1, 0], all_stats, colors, title_fontsize=12)
+    _plot_packet_loss_comparison(axes[1, 1], all_stats, colors, title_fontsize=12)
     
     plt.tight_layout()
     
-    # Save comparison plot
+    # Save combined comparison plot
     comparison_file = f"{metrics_folder}/comparison_all_algorithms.png"
-    fig.savefig(comparison_file, dpi=100, bbox_inches='tight')
+    fig.savefig(comparison_file, dpi=200, bbox_inches='tight')
+    plt.close(fig)
+    
+    # Save individual plots
+    fig_throughput, ax_throughput = plt.subplots(figsize=(12, 7))
+    _plot_throughput_comparison(ax_throughput, all_stats, colors, title_fontsize=14, is_individual=True)
+    fig_throughput.tight_layout()
+    fig_throughput.savefig(f"{metrics_folder}/throughput_comparison.png", dpi=200, bbox_inches='tight')
+    plt.close(fig_throughput)
+    
+    fig_latency, ax_latency = plt.subplots(figsize=(12, 7))
+    _plot_latency_comparison(ax_latency, all_stats, colors, title_fontsize=14, is_individual=True)
+    fig_latency.tight_layout()
+    fig_latency.savefig(f"{metrics_folder}/latency_comparison.png", dpi=200, bbox_inches='tight')
+    plt.close(fig_latency)
+    
+    fig_extra_delay, ax_extra_delay = plt.subplots(figsize=(12, 7))
+    _plot_extra_delay_comparison(ax_extra_delay, all_stats, colors, title_fontsize=14, is_individual=True)
+    fig_extra_delay.tight_layout()
+    fig_extra_delay.savefig(f"{metrics_folder}/extra_delay_comparison.png", dpi=200, bbox_inches='tight')
+    plt.close(fig_extra_delay)
+    
+    fig_packet_loss, ax_packet_loss = plt.subplots(figsize=(12, 7))
+    _plot_packet_loss_comparison(ax_packet_loss, all_stats, colors, title_fontsize=14, is_individual=True)
+    fig_packet_loss.tight_layout()
+    fig_packet_loss.savefig(f"{metrics_folder}/packet_loss_comparison.png", dpi=200, bbox_inches='tight')
+    plt.close(fig_packet_loss)
+    
     return comparison_file
 
 

@@ -1,0 +1,19 @@
+{
+  "mesh_size": [
+    6,
+    6
+  ],
+  "simulation_steps": 10000,
+  "max_flits_per_node": 10000,
+  "traffic_steps": 20,
+  "traffic_start": 0.0,
+  "traffic_end": 0.1,
+  "application_file": "embedded_app_graphs/vopd.app",
+  "mapping_file": "noc_simulator/maps/mpeg4_mapping.map",
+  "routing_algorithms": [
+    "XY",
+    "NEGATIVE_FIRST",
+    "WEST_FIRST",
+    "NORTH_LEAST"
+  ]
+}

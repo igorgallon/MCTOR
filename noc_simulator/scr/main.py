@@ -1,20 +1,22 @@
 import os
 import sys
+import argparse
 import numpy as np
 from clock import get_cycle
 from logger import Logger
 from network import Network
 from metrics import MetricsCollector
 from stats import analyze_and_plot_metrics, plot_all_algorithms_comparison
-from constants import (
-NUMBER_OF_CYCLES
-)
+from config import load_config
 import matplotlib.pyplot as plt
 
-def load_application_graph(file_path: str):
+def load_application_graph(file_path: str) -> tuple[int, list[dict]]:
     """
     Loads the application graph from a .tgff or .app file.
     """
+    num_tasks = 0
+    graph = list()
+
     file_name = os.path.basename(file_path) # Extract the file name from the path
     name, ext = os.path.splitext(file_name) # Split the file name into name and extension
     if ext not in ['.tgff', '.app']:
@@ -24,18 +26,16 @@ def load_application_graph(file_path: str):
     # Load the graph data from the file
     with open(file_path, "r") as f:
         lines = f.readlines()
-    
-    graph = list()
-    
+        
     if ext == '.app':
         index_graph = None
         index_num_tasks = None
         # Parse the .app file format
         for i, line in enumerate(lines):
-            if line.strip().lower().startswith("# number of tasks"):
+            if line.strip().lower() in ["# number of tasks", "#[ntasks]"]:
                 if i + 1 < len(lines):
                     index_num_tasks = i + 1
-            if line.strip().lower() in ["# bandwidth requires", "# bandwidth constraint", "# bandwidth requirements"]:
+            if line.strip().lower() in ["# bandwidth requires", "# bandwidth constraint", "# bandwidth requirements", "#[graph]"]:
                 index_graph = i + 1
                 break
         if index_graph is None:
@@ -56,37 +56,34 @@ def load_application_graph(file_path: str):
                     continue
                 src, dst, weight = parts
                 graph.append({"source": int(src), "target": int(dst), "weight": float(weight)})
-
+    
+    elif ext == '.tgff':
+        raise NotImplementedError("TGFF file format parsing is not yet implemented.")
+    
     return num_tasks, graph
 
-def load_tasks_mapping(file_path: str):
+
+def load_tasks_mapping(file_path: str) -> tuple[int, int, list[int]]:
     """
     Loads the tasks mapping from a file or other source.
-
     """
     # Load the .map file
     with open(file_path, "r") as f:
         lines = f.readlines()
-    
     # Parse the first line for rows and columns
     first_line = lines[0].strip().split()
-    rows = int(first_line[0])
-    columns = int(first_line[1])
-
+    rows, columns = int(first_line[0]), int(first_line[1])
     # Parse the chromosome mapping
     chromosome = lines[1].strip().split()
-    mapping = list()
-
     # Build the mapping from task IDs to router coordinates. 0-indexed
-    for task_id, ep_id in enumerate(chromosome, start=0):
-        # ep_id = int(ep_id)
-        # router_x, router_y = int((ep_id-1) // rows), int((ep_id-1) % columns)
-        mapping.append(int(ep_id) - 1)
-
+    mapping = [int(i) - 1 for i in chromosome]
+    
     return rows, columns, mapping
 
-def get_linear_list(num_steps, init_pct=0.0, end_pct=1.0):
+
+def get_linear_list(num_steps, init_pct=0.0, end_pct=1.0) -> list[float]:
     return np.linspace(init_pct, end_pct, num_steps+1).tolist()[1:]
+
 
 """
 
@@ -142,15 +139,22 @@ Pegar melhores casos do artigo Morphological e colocar no NoC simulator. Pega as
 Depois comparar com artigo dos chineses
 
 """
-
-
 if __name__ == "__main__":
     
+    # Parse command line arguments
+    parser = argparse.ArgumentParser(description='NoC Simulator')
+    parser.add_argument('--config', type=str, help='Configuration file (JSON)', default=None)
+    args = parser.parse_args()
+    
+    # Load configuration
+    # cfg = load_config(args.config)
+    cfg = load_config("noc_simulator/scr/simulation_config.json")
+    
     Logger().get_logger().info("Loading the Application Graph...")
-    num_tasks, graph = load_application_graph("embedded_app_graphs/mpeg4.app")
+    num_tasks, graph = load_application_graph(cfg["application_file"])
 
     Logger().get_logger().info("Loading tasks mapping...")
-    rows, columns, mapping = load_tasks_mapping("noc_simulator/mpeg4_mapping.map")
+    rows, columns, mapping = load_tasks_mapping(cfg["mapping_file"])
 
     # Merge the Application Graphs with the mapping
     if not graph:
@@ -166,14 +170,13 @@ if __name__ == "__main__":
     
     # Create the context for the simulation
     context = {
-        "simulation_steps": NUMBER_OF_CYCLES, # 0 means run until all packets are delivered
-        "input_traffic_rate": get_linear_list(num_steps=20, init_pct=0.0, end_pct=0.1),
-        "mesh_size": (6,6),
-        "max_flits_per_node": 10000
+        "simulation_steps": cfg["simulation_steps"],
+        "input_traffic_rate": get_linear_list(num_steps=cfg["traffic_steps"], init_pct=cfg["traffic_start"], end_pct=cfg["traffic_end"]),
+        "mesh_size": cfg["mesh_size"],
+        "max_flits_per_node": cfg["max_flits_per_node"]
     }
 
-    routing_algorithms = ["XY", "NEGATIVE_FIRST", "WEST_FIRST", "NORTH_LEAST"]#, "ODD_EVEN"]
-    # routing_algorithms = ["ODD_EVEN"]
+    routing_algorithms = cfg["routing_algorithms"]
     
     all_stats = {}  # Store statistics for all routing algorithms
 
