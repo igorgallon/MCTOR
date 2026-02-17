@@ -1,0 +1,12 @@
+s3fs==2024.3.1
+polars==0.20.31
+pandas==2.0.3
+numpy==1.24.4
+lightgbm==4.1.0
+bayesian-optimization==1.5.0
+colorama==0.4.6
+xgboost==1.7.6
+boto3>1.35.75,<2.0.0
+awswrangler==3.6.0
+sagemaker==2.243.2
+dask==2021.1.0

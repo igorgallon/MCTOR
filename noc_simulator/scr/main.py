@@ -1,90 +1,18 @@
 import os
 import sys
 import argparse
-import numpy as np
 from clock import get_cycle
-from logger import Logger
 from network import Network
+from logger import Logger
 from metrics import MetricsCollector
-from stats import analyze_and_plot_metrics, plot_all_algorithms_comparison
+from stats import calculate_metrics, plot_all_algorithms_comparison
 from config import load_config
 import matplotlib.pyplot as plt
-
-def load_application_graph(file_path: str) -> tuple[int, list[dict]]:
-    """
-    Loads the application graph from a .tgff or .app file.
-    """
-    num_tasks = 0
-    graph = list()
-
-    file_name = os.path.basename(file_path) # Extract the file name from the path
-    name, ext = os.path.splitext(file_name) # Split the file name into name and extension
-    if ext not in ['.tgff', '.app']:
-        Logger().get_logger().critical(f"Unsupported file extension: {ext}. Only .tgff and .app files are supported.")
-        raise ValueError(f"Unsupported file extension: {ext}. Only .tgff and .app files are supported.")
-
-    # Load the graph data from the file
-    with open(file_path, "r") as f:
-        lines = f.readlines()
-        
-    if ext == '.app':
-        index_graph = None
-        index_num_tasks = None
-        # Parse the .app file format
-        for i, line in enumerate(lines):
-            if line.strip().lower() in ["# number of tasks", "#[ntasks]"]:
-                if i + 1 < len(lines):
-                    index_num_tasks = i + 1
-            if line.strip().lower() in ["# bandwidth requires", "# bandwidth constraint", "# bandwidth requirements", "#[graph]"]:
-                index_graph = i + 1
-                break
-        if index_graph is None:
-            Logger().get_logger().critical("Invalid .app file format: missing graph section.")
-            raise ValueError("Invalid .app file format: missing graph section.")
-        if index_num_tasks is None:
-            Logger().get_logger().critical("Invalid .app file format: missing number of tasks section.")
-            raise ValueError("Invalid .app file format: missing number of tasks section.")
-        # Extract the number of tasks
-        num_tasks = int(lines[index_num_tasks].strip())
-        # Extract the graph data
-        graph_data = [line.strip() for line in lines[index_graph:] if line.strip() and not line.strip().startswith("#")]
-        for line in graph_data:
-            if line.strip():
-                parts = line.split()
-                if len(parts) != 3:
-                    Logger().get_logger().warning(f"Warning: Skipping malformed line in graph section: '{line}'")
-                    continue
-                src, dst, weight = parts
-                graph.append({"source": int(src), "target": int(dst), "weight": float(weight)})
-    
-    elif ext == '.tgff':
-        raise NotImplementedError("TGFF file format parsing is not yet implemented.")
-    
-    return num_tasks, graph
-
-
-def load_tasks_mapping(file_path: str) -> tuple[int, int, list[int]]:
-    """
-    Loads the tasks mapping from a file or other source.
-    """
-    # Load the .map file
-    with open(file_path, "r") as f:
-        lines = f.readlines()
-    # Parse the first line for rows and columns
-    first_line = lines[0].strip().split()
-    rows, columns = int(first_line[0]), int(first_line[1])
-    # Parse the chromosome mapping
-    chromosome = lines[1].strip().split()
-    # Build the mapping from task IDs to router coordinates. 0-indexed
-    mapping = [int(i) - 1 for i in chromosome]
-    
-    return rows, columns, mapping
-
-
-def get_linear_list(num_steps, init_pct=0.0, end_pct=1.0) -> list[float]:
-    return np.linspace(init_pct, end_pct, num_steps+1).tolist()[1:]
-
-
+from utils import (
+    get_linear_list,
+    load_application_graph,
+    load_tasks_mapping
+)
 """
 
 Metodologia:
@@ -153,37 +81,57 @@ if __name__ == "__main__":
     Logger().get_logger().info("Loading the Application Graph...")
     num_tasks, graph = load_application_graph(cfg["application_file"])
 
-    Logger().get_logger().info("Loading tasks mapping...")
-    rows, columns, mapping = load_tasks_mapping(cfg["mapping_file"])
+    # Logger().get_logger().info("Loading tasks mapping...")
+    # rows, columns, mapping = load_tasks_mapping(cfg["mapping_file"])
 
     # Merge the Application Graphs with the mapping
-    if not graph:
-        Logger().get_logger().critical("Application graph is empty. Please check the .app file format.")
-        raise ValueError("Application graph is empty. Please check the .app file format.")
-    if not mapping:
-        Logger().get_logger().critical("Tasks mapping is empty. Please check the .map file format.")
-        raise ValueError("Tasks mapping is empty. Please check the .map file format.")
+    # if not graph:
+    #     Logger().get_logger().critical("Application graph is empty. Please check the .app file format.")
+    #     raise ValueError("Application graph is empty. Please check the .app file format.")
+    # if not mapping:
+    #     Logger().get_logger().critical("Tasks mapping is empty. Please check the .map file format.")
+    #     raise ValueError("Tasks mapping is empty. Please check the .map file format.")
     
-    if rows <= 0 or columns <= 0:
-        Logger().get_logger().critical("ROWS and COLUMNS must be positive integers.")
-        raise ValueError("ROWS and COLUMNS must be positive integers.")
+    # if rows <= 0 or columns <= 0:
+    #     Logger().get_logger().critical("ROWS and COLUMNS must be positive integers.")
+    #     raise ValueError("ROWS and COLUMNS must be positive integers.")
     
     # Create the context for the simulation
     context = {
         "simulation_steps": cfg["simulation_steps"],
         "input_traffic_rate": get_linear_list(num_steps=cfg["traffic_steps"], init_pct=cfg["traffic_start"], end_pct=cfg["traffic_end"]),
         "mesh_size": cfg["mesh_size"],
-        "max_flits_per_node": cfg["max_flits_per_node"]
+        "max_flits_per_node": cfg["max_flits_per_node"],
+        "routing_algorithms": cfg["routing_algorithms"]
     }
 
-    routing_algorithms = cfg["routing_algorithms"]
-    
     all_stats = {}  # Store statistics for all routing algorithms
 
-    for r in routing_algorithms:
+    mappings = [
+        "noc_simulator/maps/vopd_onmap.map",
+        "noc_simulator/maps/vopd_xyadb.map",
+        "noc_simulator/maps/vopd_mapgraph.map",
+        "noc_simulator/maps/vopd_nmap.map",
+        "noc_simulator/maps/vopd_lmap.map",
+        "noc_simulator/maps/vopd_rmap.map",
+        "noc_simulator/maps/vopd_ga.map",
+        "noc_simulator/maps/vopd_sa.map",
+        "noc_simulator/maps/vopd_castnet.map",
+        "noc_simulator/maps/vopd_ilp.map",
+        "noc_simulator/maps/vopd_mapgtom.map"
+    ]
+
+    for m in mappings:
+
+        Logger().get_logger().info("Loading tasks mapping...")
+        rows, columns, mapping = load_tasks_mapping(m)
+
+        r = "XY"
+        m_name = m.replace(".map", "").split("/")[-1]
 
         Logger().get_logger().info("Initializing Mesh Network Simulation...")
         Logger().get_logger().info(f"Configuration: {context}")
+        Logger().get_logger().info(f"Using Mapping: {m_name}")
         Logger().get_logger().info(f"Routing Algorithm: {r}")
         mesh_network = Network(context=context, routing_algorithm=r)
         mesh_network.start()
@@ -199,7 +147,7 @@ if __name__ == "__main__":
                 
                 mesh_network.begin_processing()
 
-                flits_injected, cycles_taken = mesh_network.run(injection_rate=traffic, max_flits_per_node=context["max_flits_per_node"], total_cycles=context["simulation_steps"])
+                flits_injected, cycles_taken = mesh_network.run(injection_rate=traffic, max_flits_per_node=context["max_flits_per_node"], total_cycles=context["simulation_steps"], graph=graph, mapping=mapping)
 
                 Logger().get_logger().info(f"<<< ({p+1}/{total_progress}) Traffic finished in {cycles_taken} cycles")
                 MetricsCollector().push_metric({
@@ -217,17 +165,10 @@ if __name__ == "__main__":
             # Analyze statistics (without displaying individual plots yet)
             try:
                 Logger().get_logger().info(f"Analyzing statistics for {r} routing algorithm...")
-                stats, fig = analyze_and_plot_metrics(metrics_file, r)
-                all_stats[r] = stats  # Store for later comparison
-                
-                # Save the individual figure
-                plot_file = metrics_file.replace('.csv', '_analysis.png')
-                fig.savefig(plot_file, dpi=100, bbox_inches='tight')
-                Logger().get_logger().info(f"Plot saved to {plot_file}")
-                plt.close(fig)  # Close to free memory
-                
+                all_stats[m_name] = calculate_metrics(metrics_file)  # Store for later comparison
+                            
             except Exception as e:
-                Logger().get_logger().warning(f"Error analyzing statistics for {r}: {e}")
+                Logger().get_logger().warning(f"Error analyzing statistics for {m_name}: {e}")
             
             del mesh_network
     

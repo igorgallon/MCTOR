@@ -1,5 +1,8 @@
+import os
 import random
+import numpy as np
 from packet import Packet
+from logger import Logger
 
 ####################################
 # Routing Algorithms Implementations
@@ -267,3 +270,77 @@ def __realistic_rr_arbiter(arbiter_index: int) -> tuple[str, int]:
 ARBITER_ALGORITHMS = {
     "ROUND_ROBIN": __realistic_rr_arbiter
 }
+
+def load_application_graph(file_path: str) -> tuple[int, list[dict]]:
+    """
+    Loads the application graph from a .tgff or .app file.
+    """
+    num_tasks = 0
+    graph = list()
+
+    file_name = os.path.basename(file_path) # Extract the file name from the path
+    name, ext = os.path.splitext(file_name) # Split the file name into name and extension
+    if ext not in ['.tgff', '.app']:
+        Logger().get_logger().critical(f"Unsupported file extension: {ext}. Only .tgff and .app files are supported.")
+        raise ValueError(f"Unsupported file extension: {ext}. Only .tgff and .app files are supported.")
+
+    # Load the graph data from the file
+    with open(file_path, "r") as f:
+        lines = f.readlines()
+        
+    if ext == '.app':
+        index_graph = None
+        index_num_tasks = None
+        # Parse the .app file format
+        for i, line in enumerate(lines):
+            if line.strip().lower() in ["# number of tasks", "#[ntasks]"]:
+                if i + 1 < len(lines):
+                    index_num_tasks = i + 1
+            if line.strip().lower() in ["# bandwidth requires", "# bandwidth constraint", "# bandwidth requirements", "#[graph]"]:
+                index_graph = i + 1
+                break
+        if index_graph is None:
+            Logger().get_logger().critical("Invalid .app file format: missing graph section.")
+            raise ValueError("Invalid .app file format: missing graph section.")
+        if index_num_tasks is None:
+            Logger().get_logger().critical("Invalid .app file format: missing number of tasks section.")
+            raise ValueError("Invalid .app file format: missing number of tasks section.")
+        # Extract the number of tasks
+        num_tasks = int(lines[index_num_tasks].strip())
+        # Extract the graph data
+        graph_data = [line.strip() for line in lines[index_graph:] if line.strip() and not line.strip().startswith("#")]
+        for line in graph_data:
+            if line.strip():
+                parts = line.split()
+                if len(parts) != 3:
+                    Logger().get_logger().warning(f"Warning: Skipping malformed line in graph section: '{line}'")
+                    continue
+                src, dst, weight = parts
+                graph.append({"source": int(src), "target": int(dst), "weight": float(weight)})
+    
+    elif ext == '.tgff':
+        raise NotImplementedError("TGFF file format parsing is not yet implemented.")
+    
+    return num_tasks, graph
+
+
+def load_tasks_mapping(file_path: str) -> tuple[int, int, list[int]]:
+    """
+    Loads the tasks mapping from a file or other source.
+    """
+    # Load the .map file
+    with open(file_path, "r") as f:
+        lines = f.readlines()
+    # Parse the first line for rows and columns
+    first_line = lines[0].strip().split()
+    rows, columns = int(first_line[0]), int(first_line[1])
+    # Parse the chromosome mapping
+    chromosome = lines[1].strip().split()
+    # Build the mapping from task IDs to router coordinates. 0-indexed
+    mapping = [int(i) - 1 for i in chromosome]
+    
+    return rows, columns, mapping
+
+
+def get_linear_list(num_steps, init_pct=0.0, end_pct=1.0) -> list[float]:
+    return np.linspace(init_pct, end_pct, num_steps+1).tolist()[1:]
