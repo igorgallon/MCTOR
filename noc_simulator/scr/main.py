@@ -160,11 +160,11 @@ if __name__ == "__main__":
         
         finally:
             mesh_network.stop()
-            metrics_file = MetricsCollector().save_metrics_to_csv(suffix=r)
+            metrics_file = MetricsCollector().save_logs_to_csv(suffix=m_name)
             
             # Analyze statistics (without displaying individual plots yet)
             try:
-                Logger().get_logger().info(f"Analyzing statistics for {r} routing algorithm...")
+                Logger().get_logger().info(f"Analyzing statistics for {m_name} mapping...")
                 all_stats[m_name] = calculate_metrics(metrics_file)  # Store for later comparison
                             
             except Exception as e:
@@ -183,8 +183,8 @@ if __name__ == "__main__":
             Logger().get_logger().info(f"\n{'='*80}")
             Logger().get_logger().info("FINAL STATISTICS SUMMARY")
             Logger().get_logger().info(f"{'='*80}\n")
-            for algo, stats in all_stats.items():
-                Logger().get_logger().info(f"\n{algo}:")
+            for label, stats in all_stats.items():
+                Logger().get_logger().info(f"\n{label}:")
                 Logger().get_logger().info(f"  Throughput:   {stats['throughput'].min():.4f} - {stats['throughput'].max():.4f}")
                 Logger().get_logger().info(f"  Latency:      {stats['latency_mean'].min():.2f} - {stats['latency_mean'].max():.2f} cycles")
                 Logger().get_logger().info(f"  Extra Delay:  {stats['extra_delay'].min():.2f} - {stats['extra_delay'].max():.2f} cycles")

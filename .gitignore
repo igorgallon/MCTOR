@@ -10,7 +10,7 @@ execute.m
 extract_metrics.m
 .conda
 __pycache__
-
+*/simulation_results/*
 
 # Derived content-obscured files
 *.p

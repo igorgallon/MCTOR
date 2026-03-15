@@ -47,15 +47,15 @@ class MetricsCollector:
     def reset_metrics(self):
         self.metrics_list = []
 
-    def save_metrics_to_csv(self, suffix=""):
+    def save_logs_to_csv(self, suffix=""):
         import os
         import csv
 
         os.makedirs(self.metrics_folder, exist_ok=True)
         if suffix:
-            file_name = f"{self.metrics_folder}/metrics_{suffix}.csv"
+            file_name = f"{self.metrics_folder}/logs_{suffix}.csv"
         else:
-            file_name = f"{self.metrics_folder}/metrics.csv"
+            file_name = f"{self.metrics_folder}/logs.csv"
 
         # If there are no metrics, create an empty file with headers based on known keys
         if not self.metrics_list:

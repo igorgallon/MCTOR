@@ -1,4 +1,5 @@
 import json
+from tkinter import font
 import pandas as pd
 import matplotlib.pyplot as plt
 import numpy as np
@@ -88,9 +89,9 @@ def get_packet_loss(df):
 
 def _plot_throughput_comparison(ax, all_stats, colors, title_fontsize=12, is_individual=False):
     """Helper function to plot throughput comparison"""
-    for algo, stats in all_stats.items():
+    for label, stats in all_stats.items():
         ax.plot(range(len(stats)), stats['throughput'], marker='o', linestyle='-', 
-               linewidth=2, label=algo, color=colors.get(algo))
+               linewidth=2, label=label, color=colors.get(label))
     ax.set_title('Throughput Comparison', fontsize=title_fontsize, fontweight='bold')
     ax.set_xlabel('Traffic Rate Index')
     ax.set_ylabel('Throughput (flits/cycle)')
@@ -100,9 +101,9 @@ def _plot_throughput_comparison(ax, all_stats, colors, title_fontsize=12, is_ind
 
 def _plot_latency_comparison(ax, all_stats, colors, title_fontsize=12, is_individual=False):
     """Helper function to plot latency comparison"""
-    for algo, stats in all_stats.items():
+    for label, stats in all_stats.items():
         ax.plot(range(len(stats)), stats['latency_mean'], marker='s', linestyle='-', 
-               linewidth=2, label=algo, color=colors.get(algo))
+               linewidth=2, label=label, color=colors.get(label))
     ax.set_title('Average Latency Comparison', fontsize=title_fontsize, fontweight='bold')
     ax.set_xlabel('Traffic Rate Index')
     ax.set_ylabel('Latency (cycles)')
@@ -112,9 +113,9 @@ def _plot_latency_comparison(ax, all_stats, colors, title_fontsize=12, is_indivi
 
 def _plot_extra_delay_comparison(ax, all_stats, colors, title_fontsize=12, is_individual=False):
     """Helper function to plot extra delay comparison"""
-    for algo, stats in all_stats.items():
+    for label, stats in all_stats.items():
         ax.plot(range(len(stats)), stats['extra_delay'], marker='^', linestyle='-', 
-               linewidth=2, label=algo, color=colors.get(algo))
+               linewidth=2, label=label, color=colors.get(label))
     ax.set_title('Extra Delay Comparison', fontsize=title_fontsize, fontweight='bold')
     ax.set_xlabel('Traffic Rate Index')
     ax.set_ylabel('Extra Delay (cycles)')
@@ -124,18 +125,95 @@ def _plot_extra_delay_comparison(ax, all_stats, colors, title_fontsize=12, is_in
 
 def _plot_packet_loss_comparison(ax, all_stats, colors, title_fontsize=12, is_individual=False):
     """Helper function to plot packet loss comparison"""
-    for algo, stats in all_stats.items():
+    for label, stats in all_stats.items():
         # ax.plot(range(len(stats)), stats['packet_loss'], marker='^', linestyle='-', 
-        #        linewidth=2, label=algo, color=colors.get(algo))
+        #        linewidth=2, label=label, color=colors.get(label))
         z = np.polyfit(range(len(stats)), stats['packet_loss'], 2)
         p = np.poly1d(z)
-        ax.plot(range(len(stats)), p(range(len(stats))), linestyle='-', linewidth=2, 
-               label=algo, color=colors.get(algo))
+        ax.plot(range(len(stats)), p(range(len(stats))), linestyle='-', linewidth=3, 
+               label=label, color=colors.get(label))
     ax.set_title('Packet Loss Comparison', fontsize=title_fontsize, fontweight='bold')
     ax.set_xlabel('Traffic Rate Index')
     ax.set_ylabel('Lost Packets')
     ax.legend()
     ax.grid(True, alpha=0.3)
+
+
+def __plot_global_average_latency(ax, all_stats, colors, title_fontsize=14, is_individual=False):
+    """
+    Plot a bar chart with the global average latency for each map.
+
+    all_stats: dict-like mapping name -> stats dataframe (must contain 'latency_mean')
+    metrics_folder: folder to save the chart
+    Returns the path to the saved image.
+    """
+    # Compute mean latency per map/label
+    means = {}
+    for label, stats in all_stats.items():
+        if isinstance(stats, pd.DataFrame) and 'latency_mean' in stats.columns:
+            means[label] = stats['latency_mean'].mean()
+        elif isinstance(stats, (list, tuple, np.ndarray, pd.Series)):
+            means[label] = float(np.mean(stats))
+        else:
+            # skip unknown formats
+            continue
+
+    if not means:
+        raise ValueError('No latency_mean data found in provided all_stats')
+
+    names = list(means.keys())
+    values = [means[n] for n in names]
+
+    bars = ax.bar(range(len(names)), values, color=[colors.get(n) for n in names])
+
+    ax.set_title('Global Average Latency per Map', fontsize=title_fontsize, fontweight='bold')
+    ax.set_xlabel('Map')
+    ax.set_ylabel('Average Latency (cycles)')
+    ax.set_xticks(range(len(names)))
+    ax.set_xticklabels(names, rotation=45, ha='right')
+
+    # Annotate bars
+    for bar, val in zip(bars, values):
+        ax.text(bar.get_x() + bar.get_width() / 2, val, f"{val:.2f}", ha='center', va='bottom', fontsize=9)
+
+
+def __plot_global_average_throughput(ax, all_stats, colors, title_fontsize=14, is_individual=False):
+
+    """
+    Plot a bar chart with the global average throughput for each map.
+
+    all_stats: dict-like mapping name -> stats dataframe (must contain 'throughput')
+    metrics_folder: folder to save the chart
+    Returns the path to the saved image.
+    """
+    # Compute mean throughput per map/label
+    means = {}
+    for label, stats in all_stats.items():
+        if isinstance(stats, pd.DataFrame) and 'throughput' in stats.columns:
+            means[label] = stats['throughput'].mean()
+        elif isinstance(stats, (list, tuple, np.ndarray, pd.Series)):
+            means[label] = float(np.mean(stats))
+        else:
+            # skip unknown formats
+            continue
+
+    if not means:
+        raise ValueError('No throughput data found in provided all_stats')
+
+    names = list(means.keys())
+    values = [means[n] for n in names]
+
+    bars = ax.bar(range(len(names)), values, color=[colors.get(n, "#7f7f7f") for n in names])
+
+    ax.set_title('Global Average Throughput per Map', fontsize=title_fontsize, fontweight='bold')
+    ax.set_xlabel('Map')
+    ax.set_ylabel('Average Throughput (flits/cycle)')
+    ax.set_xticks(range(len(names)))
+    ax.set_xticklabels(names, rotation=45, ha='right')
+
+    # Annotate bars
+    for bar, val in zip(bars, values):
+        ax.text(bar.get_x() + bar.get_width() / 2, val, f"{val:.4f}", ha='center', va='bottom', fontsize=9)
 
 
 ###################################################
@@ -169,8 +247,26 @@ def plot_all_algorithms_comparison(all_stats, metrics_folder, context=None):
     all_stats: dict with routing algorithm names as keys and stats dataframes as values
     context: simulation configuration dictionary
     """
-    colors = {'XY': '#1f77b4', 'NEGATIVE_FIRST': '#ff7f0e', 'WEST_FIRST': '#2ca02c', 'NORTH_LEAST': '#d62728'}
-    
+    # colors = {
+    #     'XY': '#1f77b4',
+    #     'NEGATIVE_FIRST': '#ff7f0e',
+    #     'WEST_FIRST': '#2ca02c',
+    #     'NORTH_LEAST': '#d62728'
+    # }
+    colors = {
+        'vopd_onmap': '#1f77b4',
+        'vopd_xyadb': '#ff7f0e',
+        'vopd_mapgraph': '#2ca02c',
+        'vopd_nmap': '#d62728',
+        'vopd_lmap': '#9467bd',
+        'vopd_rmap': '#8c564b',
+        'vopd_ga': '#e377c2',
+        'vopd_sa': '#7f7f7f',
+        'vopd_castnet': '#bcbd22',
+        'vopd_ilp': '#17becf',
+        'vopd_mapgtom': '#ff9896'
+    }
+
     # Create combined 2x2 comparison plot
     fig, axes = plt.subplots(2, 2, figsize=(16, 12))
     fig.suptitle('Simulation Statistics - All Routing Algorithms Comparison', fontsize=16, fontweight='bold')
@@ -225,7 +321,56 @@ def plot_all_algorithms_comparison(all_stats, metrics_folder, context=None):
     fig_packet_loss.tight_layout()
     fig_packet_loss.savefig(f"{metrics_folder}/packet_loss_comparison.png", dpi=200, bbox_inches='tight')
     plt.close(fig_packet_loss)
+
+    fig_global_avg_latency, ax_global_avg_latency = plt.subplots(figsize=(12, 7))
+    __plot_global_average_latency(ax_global_avg_latency, all_stats, colors, title_fontsize=14, is_individual=True)
+    fig_global_avg_latency.tight_layout()
+    fig_global_avg_latency.savefig(f"{metrics_folder}/global_average_latency_per_map.png", dpi=200, bbox_inches='tight')
+    plt.close(fig_global_avg_latency)
     
+    fig_global_avg_throughput, ax_global_avg_throughput = plt.subplots(figsize=(12, 7))
+    __plot_global_average_throughput(ax_global_avg_throughput, all_stats, colors, title_fontsize=14, is_individual=True)
+    fig_global_avg_throughput.tight_layout()
+    fig_global_avg_throughput.savefig(f"{metrics_folder}/global_average_throughput_per_map.png", dpi=200, bbox_inches='tight')
+    plt.close(fig_global_avg_throughput)
+
+
+    # Print a table with mean latency and throughput for each map
+    fig_table, ax_table = plt.subplots(figsize=(10, len(all_stats) * 0.5 + 1))
+    table_data = []
+    for label, stats in all_stats.items():
+        if isinstance(stats, pd.DataFrame):
+            mean_latency = stats['latency_mean'].mean() if 'latency_mean' in stats.columns else float('nan')
+            std_latency = stats['latency_mean'].std() if 'latency_mean' in stats.columns else float('nan')
+            mean_throughput = stats['throughput'].mean() if 'throughput' in stats.columns else float('nan')
+            std_throughput = stats['throughput'].std() if 'throughput' in stats.columns else float('nan')
+            table_data.append([label.replace('vopd_', ''), f"{mean_latency:.2f}", f"{std_latency:.2f}", f"{mean_throughput:.4f}", f"{std_throughput:.4f}"])
+    table_data.sort(key=lambda x: x[1])  # Sort by mean latency
+    # Convert to a Pandas DataGFrame for better formatting
+    df_table = pd.DataFrame(table_data, columns=['Map', 'Mean Latency (cycles)', 'Latency Std Dev', 'Mean Throughput (flits/cycle)', 'Throughput Std Dev'])
+    df_table.set_index('Map', inplace=True)
+    # Plot boxplot of latency and throughput
+    fig_box, axes_box = plt.subplots(1, 2, figsize=(12, 6))
+    latency_data = [stats['latency_mean'] for stats in all_stats.values() if isinstance(stats, pd.DataFrame) and 'latency_mean' in stats.columns]
+    throughput_data = [stats['throughput'] for stats in all_stats.values() if isinstance(stats, pd.DataFrame) and 'throughput' in stats.columns]
+    axes_box[0].boxplot(latency_data, labels=df_table.index, patch_artist=True)
+    axes_box[0].set_title('Latency Distribution per Map', fontsize=14, fontweight='bold')
+    axes_box[0].set_xlabel('Map')
+    axes_box[1].boxplot(throughput_data, labels=df_table.index, patch_artist=True)
+    axes_box[1].set_title('Throughput Distribution per Map', fontsize=14, fontweight='bold')
+    axes_box[1].set_xlabel('Map')
+    fig_box.tight_layout()
+    fig_box.savefig(f"{metrics_folder}/latency_throughput_boxplots.png", dpi=200, bbox_inches='tight')
+    plt.close(fig_box)
+    # Export to CSV file
+    df_table.to_csv(f"{metrics_folder}/mean_latency_throughput_table.csv")
+    
+
+    # table = ax_table.table(cellText=table_data, colLabels=['Map', 'Mean Latency (cycles)', 'Mean Throughput (flits/cycle)'], loc='center')
+    # table.auto_set_font_size(False)
+    # fig_table.tight_layout()
+    # fig_table.savefig(f"{metrics_folder}/mean_latency_throughput_table.png", dpi=200, bbox_inches='tight')
+    # plt.close(fig_table)
     return comparison_file
 
 
@@ -246,4 +391,7 @@ def calculate_metrics(metrics_file):
     stats = pd.merge(stats, extra_delay, on='execution_id')
     stats = pd.merge(stats, packet_loss, on='execution_id')
 
+    # Save statistics to CSV for this mapping/algorithm
+    stats_file = metrics_file.replace("logs_", "stats_")
+    stats.to_csv(stats_file, index=False)
     return stats
