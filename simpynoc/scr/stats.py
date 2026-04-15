@@ -254,17 +254,22 @@ def plot_all_algorithms_comparison(all_stats, metrics_folder, context=None):
     #     'NORTH_LEAST': '#d62728'
     # }
     colors = {
-        'vopd_onmap': '#1f77b4',
-        'vopd_xyadb': '#ff7f0e',
-        'vopd_mapgraph': '#2ca02c',
-        'vopd_nmap': '#d62728',
-        'vopd_lmap': '#9467bd',
-        'vopd_rmap': '#8c564b',
-        'vopd_ga': '#e377c2',
-        'vopd_sa': '#7f7f7f',
-        'vopd_castnet': '#bcbd22',
-        'vopd_ilp': '#17becf',
-        'vopd_mapgtom': '#ff9896'
+        # 'vopd_onmap': '#1f77b4',
+        # 'vopd_xyadb': '#ff7f0e',
+        # 'vopd_mapgraph': '#2ca02c',
+        # 'vopd_nmap': '#d62728',
+        # 'vopd_lmap': '#9467bd',
+        # 'vopd_rmap': '#8c564b',
+        # 'vopd_ga': '#e377c2',
+        # 'vopd_sa': '#7f7f7f',
+        # 'vopd_castnet': '#bcbd22',
+        # 'vopd_ilp': '#17becf',
+        # 'vopd_mapgtom': '#ff9896'
+        'ev_4_4': '#1f77b4',
+        'dr_4_4': '#ff7f0e',
+        'ds_4_4': '#2ca02c',
+        'hr_4_4': '#d62728',
+        'hs_4_4': '#9467bd',
     }
 
     # Create combined 2x2 comparison plot
@@ -364,13 +369,6 @@ def plot_all_algorithms_comparison(all_stats, metrics_folder, context=None):
     plt.close(fig_box)
     # Export to CSV file
     df_table.to_csv(f"{metrics_folder}/mean_latency_throughput_table.csv")
-    
-
-    # table = ax_table.table(cellText=table_data, colLabels=['Map', 'Mean Latency (cycles)', 'Mean Throughput (flits/cycle)'], loc='center')
-    # table.auto_set_font_size(False)
-    # fig_table.tight_layout()
-    # fig_table.savefig(f"{metrics_folder}/mean_latency_throughput_table.png", dpi=200, bbox_inches='tight')
-    # plt.close(fig_table)
     return comparison_file
 
 
