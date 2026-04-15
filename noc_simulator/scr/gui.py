@@ -1,8 +1,5 @@
 import tkinter as tk
 from tkinter import ttk, messagebox, filedialog
-import json
-import os
-import sys
 from pathlib import Path
 from config import load_config, save_config
 

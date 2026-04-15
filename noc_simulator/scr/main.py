@@ -13,60 +13,7 @@ from utils import (
     load_application_graph,
     load_tasks_mapping
 )
-"""
 
-Metodologia:
-APP -> MCTOR Matlab -> Mapeamento Inteligente -> Simula em Python
-
-1 - Motivação:
-    Contextualização
-
-2 - 
-Deixar no texto justificado por quê feito em MATLAB (toolbox pronta com algoritmos multi-objetivos
-e depois em Python (implementação mais simples de Multiprocessamento). Por que escolhida as taxas de testes
-
-
-Comparação com outros simuladores. Comparações qualitativas
-
-Comparação quantitativa:
-- Diferentes algoritmos de roteamento
-- Tamanho do Grid
-
-Comparação qualitativa:
-- Outros NoCs, no que o nosso é melhor
-
-https://ieeexplore-ieee-org.ez31.periodicos.capes.gov.br/document/4919636
-https://ieeexplore-ieee-org.ez31.periodicos.capes.gov.br/document/11141644/
-
-https://chat.deepseek.com/share/gqbiivql6tvccke492
-
-Test1: Comparação com os resultados do Khan Tahir
- - Apontar diferenças: o nosso não tem perda de pacotes, por exemplo
- - Comparar métricas (tamanho do GRID, buffer size, número de ciclos, etc)
-
-Test2: Comparação de diferentes, algoritmos que vieram do MCTOR Matlab
--------------------------------
-Artigo IEEE:
-
-> Só do simulador NoC em python
-
-Comparação 1:
-    Artigo Noxim (Zhi Cheng) com diferentes roteamentos, falar que experimentos deram parecidos/curvas.
-    Apontar as diferenças entre o Noxim e o nosso: python, mais flexivel, etc.
-    AI: Ver se tem como normalizar os resultados para fazer comparação 
-
-Comparação 2:
-    Pegar os mapeamentos dos benchmarks do artigo Morphological e comparar Energia/FaultTolerance no NoC simulator
-
--------------------------------------------------------------------
-
-Comparar simulador NoC: comparação com o artigo Morphological
-Comparar métricas/algoritmos: comparar com o artigo dos chineses
-
-Pegar melhores casos do artigo Morphological e colocar no NoC simulator. Pega as métricas e comparar com o artigo.
-Depois comparar com artigo dos chineses
-
-"""
 if __name__ == "__main__":
     
     # Parse command line arguments
@@ -79,7 +26,8 @@ if __name__ == "__main__":
     cfg = load_config("noc_simulator/scr/simulation_config.json")
     
     Logger().get_logger().info("Loading the Application Graph...")
-    num_tasks, graph = load_application_graph(cfg["application_file"])
+    # num_tasks, graph = load_application_graph(cfg["application_file"])
+    num_tasks, graph = load_application_graph("embedded_app_graphs/pcb_circle.app")
 
     # Logger().get_logger().info("Loading tasks mapping...")
     # rows, columns, mapping = load_tasks_mapping(cfg["mapping_file"])
@@ -108,17 +56,22 @@ if __name__ == "__main__":
     all_stats = {}  # Store statistics for all routing algorithms
 
     mappings = [
-        "noc_simulator/maps/vopd_onmap.map",
-        "noc_simulator/maps/vopd_xyadb.map",
-        "noc_simulator/maps/vopd_mapgraph.map",
-        "noc_simulator/maps/vopd_nmap.map",
-        "noc_simulator/maps/vopd_lmap.map",
-        "noc_simulator/maps/vopd_rmap.map",
-        "noc_simulator/maps/vopd_ga.map",
-        "noc_simulator/maps/vopd_sa.map",
-        "noc_simulator/maps/vopd_castnet.map",
-        "noc_simulator/maps/vopd_ilp.map",
-        "noc_simulator/maps/vopd_mapgtom.map"
+        # "noc_simulator/maps/vopd_onmap.map",
+        # "noc_simulator/maps/vopd_xyadb.map",
+        # "noc_simulator/maps/vopd_mapgraph.map",
+        # "noc_simulator/maps/vopd_nmap.map",
+        # "noc_simulator/maps/vopd_lmap.map",
+        # "noc_simulator/maps/vopd_rmap.map",
+        # "noc_simulator/maps/vopd_ga.map",
+        # "noc_simulator/maps/vopd_sa.map",
+        # "noc_simulator/maps/vopd_castnet.map",
+        # "noc_simulator/maps/vopd_ilp.map",
+        # "noc_simulator/maps/vopd_mapgtom.map"
+        "noc_simulator/maps/engmaps/4_4/EV.map",
+        "noc_simulator/maps/engmaps/4_4/DR.map",
+        "noc_simulator/maps/engmaps/4_4/DS.map",
+        "noc_simulator/maps/engmaps/4_4/HR.map",
+        "noc_simulator/maps/engmaps/4_4/HS.map",
     ]
 
     for m in mappings:

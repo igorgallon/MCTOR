@@ -35,62 +35,51 @@ class ProcessingElement:
         '''
         Injects a packet into the processing element.
         '''
-        if p.dst != (self.x, self.y):
-            if not self.out_router_queue.full():
-                Logger().get_logger().debug(f"> {self.name} Injecting Packet {p.id} S: {(self.x, self.y)} T: {p.dst} W: {p.payload.get('weight')}")
-                self.out_router_queue.put(p)
-                self.packets_sent += 1
-                MetricsCollector().push_metric({
-                    'source': 'router',
-                    'id': self.name,
-                    'type': 'packet_sent',
-                    'packet_id': p.id,
-                    'creation_time': p.creation_time,
-                    'src': p.src,
-                    'dst': p.dst,
-                    'cycles': get_cycle(),
-                    'execution_id': p.payload.get("execution_id"),
-                    'weight': p.payload.get("weight")
-                })
-                return True
-            else:
-                if ENABLE_RETRY_MECHANISM:
-                    # Retry mechanism
-                    retry_count = 0
-                    while retry_count < RETRY_LIMIT:
-                        time.sleep(PE_SLEEP_RETRY_SECONDS)
-                        Logger().get_logger().debug(f"{self.name} Outgoing queue is full, retrying to inject Packet {p.id}...")
-                        if not self.out_router_queue.full():
-                            self.out_router_queue.put(p)
-                            self.packets_sent += 1
-                            MetricsCollector().push_metric({
-                                'source': 'router',
-                                'id': self.name,
-                                'type': 'packet_sent',
-                                'packet_id': p.id,
-                                'creation_time': p.creation_time,
-                                'src': p.src,
-                                'dst': p.dst,
-                                'cycles': get_cycle(),
-                                'execution_id': p.payload.get("execution_id"),
-                                'weight': p.payload.get("weight")
-                            })
-                            return True
-                        retry_count += 1
-                    
-                    if retry_count >= RETRY_LIMIT:
-                        Logger().get_logger().debug(f"{self.name} Failed to inject Packet {p.id} after {retry_count} retries.")
+        # if p.dst != (self.x, self.y):
+        if not self.out_router_queue.full():
+            Logger().get_logger().debug(f"> {self.name} Injecting Packet {p.id} S: {(self.x, self.y)} T: {p.dst} W: {p.payload.get('weight')}")
+            self.out_router_queue.put(p)
+            self.packets_sent += 1
+            MetricsCollector().push_metric({
+                'source': 'router',
+                'id': self.name,
+                'type': 'packet_sent',
+                'packet_id': p.id,
+                'creation_time': p.creation_time,
+                'src': p.src,
+                'dst': p.dst,
+                'cycles': get_cycle(),
+                'execution_id': p.payload.get("execution_id"),
+                'weight': p.payload.get("weight")
+            })
+            return True
+        else:
+            if ENABLE_RETRY_MECHANISM:
+                # Retry mechanism
+                retry_count = 0
+                while retry_count < RETRY_LIMIT:
+                    time.sleep(PE_SLEEP_RETRY_SECONDS)
+                    Logger().get_logger().debug(f"{self.name} Outgoing queue is full, retrying to inject Packet {p.id}...")
+                    if not self.out_router_queue.full():
+                        self.out_router_queue.put(p)
+                        self.packets_sent += 1
                         MetricsCollector().push_metric({
                             'source': 'router',
                             'id': self.name,
-                            'type': 'packet_loss',
+                            'type': 'packet_sent',
                             'packet_id': p.id,
+                            'creation_time': p.creation_time,
+                            'src': p.src,
+                            'dst': p.dst,
+                            'cycles': get_cycle(),
                             'execution_id': p.payload.get("execution_id"),
                             'weight': p.payload.get("weight")
                         })
-                    
-                else:
-                    Logger().get_logger().debug(f"{self.name} Outgoing queue is full, cannot inject Packet {p.id}.")
+                        return True
+                    retry_count += 1
+                
+                if retry_count >= RETRY_LIMIT:
+                    Logger().get_logger().debug(f"{self.name} Failed to inject Packet {p.id} after {retry_count} retries.")
                     MetricsCollector().push_metric({
                         'source': 'router',
                         'id': self.name,
@@ -99,9 +88,20 @@ class ProcessingElement:
                         'execution_id': p.payload.get("execution_id"),
                         'weight': p.payload.get("weight")
                     })
+                
+            else:
+                Logger().get_logger().debug(f"{self.name} Outgoing queue is full, cannot inject Packet {p.id}.")
+                MetricsCollector().push_metric({
+                    'source': 'router',
+                    'id': self.name,
+                    'type': 'packet_loss',
+                    'packet_id': p.id,
+                    'execution_id': p.payload.get("execution_id"),
+                    'weight': p.payload.get("weight")
+                })
         
-        else:
-            Logger().get_logger().error(f"{self.name} Injecting Packet {p.id} to itself is not allowed.")
+        # else:
+        #     Logger().get_logger().error(f"{self.name} Injecting Packet {p.id} to itself is not allowed.")
         
         return False
 
