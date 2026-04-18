@@ -6,7 +6,7 @@
   "traffic_start": 0.0,
   "traffic_end": 0.5,
   "application_file": "embedded_app_graphs/vopd.app",
-  "mapping_file": "noc_simulator/maps/mpeg4_mapping.map",
+  "mapping_file": "simpynoc/maps/mpeg4_mapping.map",
   "routing_algorithms": [
     "XY"
   ]

@@ -23,7 +23,7 @@ if __name__ == "__main__":
     
     # Load configuration
     # cfg = load_config(args.config)
-    cfg = load_config("noc_simulator/scr/simulation_config.json")
+    cfg = load_config("simpynoc/scr/simulation_config.json")
     
     Logger().get_logger().info("Loading the Application Graph...")
     # num_tasks, graph = load_application_graph(cfg["application_file"])
@@ -56,22 +56,22 @@ if __name__ == "__main__":
     all_stats = {}  # Store statistics for all routing algorithms
 
     mappings = [
-        # "noc_simulator/maps/vopd_onmap.map",
-        # "noc_simulator/maps/vopd_xyadb.map",
-        # "noc_simulator/maps/vopd_mapgraph.map",
-        # "noc_simulator/maps/vopd_nmap.map",
-        # "noc_simulator/maps/vopd_lmap.map",
-        # "noc_simulator/maps/vopd_rmap.map",
-        # "noc_simulator/maps/vopd_ga.map",
-        # "noc_simulator/maps/vopd_sa.map",
-        # "noc_simulator/maps/vopd_castnet.map",
-        # "noc_simulator/maps/vopd_ilp.map",
-        # "noc_simulator/maps/vopd_mapgtom.map"
-        "noc_simulator/maps/engmaps/4_4/EV.map",
-        "noc_simulator/maps/engmaps/4_4/DR.map",
-        "noc_simulator/maps/engmaps/4_4/DS.map",
-        "noc_simulator/maps/engmaps/4_4/HR.map",
-        "noc_simulator/maps/engmaps/4_4/HS.map",
+        # "simpynoc/maps/vopd_onmap.map",
+        # "simpynoc/maps/vopd_xyadb.map",
+        # "simpynoc/maps/vopd_mapgraph.map",
+        # "simpynoc/maps/vopd_nmap.map",
+        # "simpynoc/maps/vopd_lmap.map",
+        # "simpynoc/maps/vopd_rmap.map",
+        # "simpynoc/maps/vopd_ga.map",
+        # "simpynoc/maps/vopd_sa.map",
+        # "simpynoc/maps/vopd_castnet.map",
+        # "simpynoc/maps/vopd_ilp.map",
+        # "simpynoc/maps/vopd_mapgtom.map"
+        "simpynoc/maps/engmaps/4_4/EV.map",
+        "simpynoc/maps/engmaps/4_4/DR.map",
+        "simpynoc/maps/engmaps/4_4/DS.map",
+        "simpynoc/maps/engmaps/4_4/HR.map",
+        "simpynoc/maps/engmaps/4_4/HS.map",
     ]
 
     for m in mappings:

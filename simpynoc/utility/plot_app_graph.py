@@ -3,7 +3,7 @@ from pathlib import Path
 import networkx as nx
 import matplotlib.pyplot as plt
 
-# Ensure repository root is on sys.path so `from noc_simulator.scr import ...` works
+# Ensure repository root is on sys.path so `from simpynoc.scr import ...` works
 # when this script is executed directly (not as a package).
 ROOT = Path(__file__).resolve().parents[2]
 if str(ROOT) not in sys.path:

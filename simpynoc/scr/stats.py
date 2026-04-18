@@ -1,4 +1,5 @@
 import json
+import os
 from tkinter import font
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -87,15 +88,19 @@ def get_packet_loss(df):
 # Statistics Plotting Functions
 ###################################################
 
+AXIS_LABEL_FONT_SIZE = 12
+LEGEND_FONT_SIZE = 11
+
 def _plot_throughput_comparison(ax, all_stats, colors, title_fontsize=12, is_individual=False):
     """Helper function to plot throughput comparison"""
     for label, stats in all_stats.items():
         ax.plot(range(len(stats)), stats['throughput'], marker='o', linestyle='-', 
                linewidth=2, label=label, color=colors.get(label))
-    ax.set_title('Throughput Comparison', fontsize=title_fontsize, fontweight='bold')
-    ax.set_xlabel('Traffic Rate Index')
-    ax.set_ylabel('Throughput (flits/cycle)')
-    ax.legend()
+    if not is_individual:
+        ax.set_title('Throughput Comparison', fontsize=title_fontsize, fontweight='bold')
+    ax.set_xlabel('Traffic Rate Index', fontsize=AXIS_LABEL_FONT_SIZE, fontweight='bold')
+    ax.set_ylabel('Throughput (flits/cycle)', fontsize=AXIS_LABEL_FONT_SIZE, fontweight='bold')
+    ax.legend(fontsize=LEGEND_FONT_SIZE)
     ax.grid(True, alpha=0.3)
 
 
@@ -104,10 +109,11 @@ def _plot_latency_comparison(ax, all_stats, colors, title_fontsize=12, is_indivi
     for label, stats in all_stats.items():
         ax.plot(range(len(stats)), stats['latency_mean'], marker='s', linestyle='-', 
                linewidth=2, label=label, color=colors.get(label))
-    ax.set_title('Average Latency Comparison', fontsize=title_fontsize, fontweight='bold')
-    ax.set_xlabel('Traffic Rate Index')
-    ax.set_ylabel('Latency (cycles)')
-    ax.legend()
+    if not is_individual:
+        ax.set_title('Average Latency Comparison', fontsize=title_fontsize, fontweight='bold')
+    ax.set_xlabel('Traffic Rate Index', fontsize=AXIS_LABEL_FONT_SIZE, fontweight='bold')
+    ax.set_ylabel('Latency (cycles)', fontsize=AXIS_LABEL_FONT_SIZE, fontweight='bold')
+    ax.legend(fontsize=LEGEND_FONT_SIZE)
     ax.grid(True, alpha=0.3)
 
 
@@ -116,10 +122,11 @@ def _plot_extra_delay_comparison(ax, all_stats, colors, title_fontsize=12, is_in
     for label, stats in all_stats.items():
         ax.plot(range(len(stats)), stats['extra_delay'], marker='^', linestyle='-', 
                linewidth=2, label=label, color=colors.get(label))
-    ax.set_title('Extra Delay Comparison', fontsize=title_fontsize, fontweight='bold')
-    ax.set_xlabel('Traffic Rate Index')
-    ax.set_ylabel('Extra Delay (cycles)')
-    ax.legend()
+    if not is_individual:
+        ax.set_title('Extra Delay Comparison', fontsize=title_fontsize, fontweight='bold')
+    ax.set_xlabel('Traffic Rate Index', fontsize=AXIS_LABEL_FONT_SIZE, fontweight='bold')
+    ax.set_ylabel('Extra Delay (cycles)', fontsize=AXIS_LABEL_FONT_SIZE, fontweight='bold')
+    ax.legend(fontsize=LEGEND_FONT_SIZE)
     ax.grid(True, alpha=0.3)
 
 
@@ -132,10 +139,11 @@ def _plot_packet_loss_comparison(ax, all_stats, colors, title_fontsize=12, is_in
         p = np.poly1d(z)
         ax.plot(range(len(stats)), p(range(len(stats))), linestyle='-', linewidth=3, 
                label=label, color=colors.get(label))
-    ax.set_title('Packet Loss Comparison', fontsize=title_fontsize, fontweight='bold')
-    ax.set_xlabel('Traffic Rate Index')
-    ax.set_ylabel('Lost Packets')
-    ax.legend()
+    if not is_individual:
+        ax.set_title('Packet Loss Comparison', fontsize=title_fontsize, fontweight='bold')
+    ax.set_xlabel('Traffic Rate Index', fontsize=AXIS_LABEL_FONT_SIZE, fontweight='bold')
+    ax.set_ylabel('Lost Packets', fontsize=AXIS_LABEL_FONT_SIZE, fontweight='bold')
+    ax.legend(fontsize=LEGEND_FONT_SIZE)
     ax.grid(True, alpha=0.3)
 
 
@@ -247,29 +255,27 @@ def plot_all_algorithms_comparison(all_stats, metrics_folder, context=None):
     all_stats: dict with routing algorithm names as keys and stats dataframes as values
     context: simulation configuration dictionary
     """
-    # colors = {
-    #     'XY': '#1f77b4',
-    #     'NEGATIVE_FIRST': '#ff7f0e',
-    #     'WEST_FIRST': '#2ca02c',
-    #     'NORTH_LEAST': '#d62728'
-    # }
     colors = {
-        # 'vopd_onmap': '#1f77b4',
-        # 'vopd_xyadb': '#ff7f0e',
-        # 'vopd_mapgraph': '#2ca02c',
-        # 'vopd_nmap': '#d62728',
-        # 'vopd_lmap': '#9467bd',
-        # 'vopd_rmap': '#8c564b',
-        # 'vopd_ga': '#e377c2',
-        # 'vopd_sa': '#7f7f7f',
-        # 'vopd_castnet': '#bcbd22',
-        # 'vopd_ilp': '#17becf',
-        # 'vopd_mapgtom': '#ff9896'
-        'ev_4_4': '#1f77b4',
-        'dr_4_4': '#ff7f0e',
-        'ds_4_4': '#2ca02c',
-        'hr_4_4': '#d62728',
-        'hs_4_4': '#9467bd',
+        'XY': '#1f77b4',
+        'NEGATIVE_FIRST': '#ff7f0e',
+        'WEST_FIRST': '#2ca02c',
+        'NORTH_LAST': '#d62728',
+        'vopd_onmap': '#1f77b4',
+        'vopd_xyadb': '#ff7f0e',
+        'vopd_mapgraph': '#2ca02c',
+        'vopd_nmap': '#d62728',
+        'vopd_lmap': '#9467bd',
+        'vopd_rmap': '#8c564b',
+        'vopd_ga': '#e377c2',
+        'vopd_sa': '#7f7f7f',
+        'vopd_castnet': '#bcbd22',
+        'vopd_ilp': '#17becf',
+        'vopd_mapgtom': '#ff9896',
+        'EV': '#1f77b4',
+        'DR': '#ff7f0e',
+        'DS': '#2ca02c',
+        'HR': '#d62728',
+        'HS': '#9467bd'
     }
 
     # Create combined 2x2 comparison plot
@@ -296,6 +302,9 @@ def plot_all_algorithms_comparison(all_stats, metrics_folder, context=None):
     _plot_packet_loss_comparison(axes[1, 1], all_stats, colors, title_fontsize=12)
     
     plt.tight_layout()
+    
+    if not os.path.exists(metrics_folder):
+        os.makedirs(metrics_folder)
     
     # Save combined comparison plot
     comparison_file = f"{metrics_folder}/comparison_all_algorithms.png"
@@ -372,7 +381,7 @@ def plot_all_algorithms_comparison(all_stats, metrics_folder, context=None):
     return comparison_file
 
 
-def calculate_metrics(metrics_file):
+def calculate_metrics(metrics_file: str):
     """
     Load metrics from CSV, calculate statistics, and returns merged statistics dataframe.
     """

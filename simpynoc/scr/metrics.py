@@ -11,7 +11,7 @@ class MetricsCollector:
             if cls._instance is None:
                 cls._instance = super().__new__(cls)
                 cls._instance.metrics_list = []
-                cls._instance.metrics_folder = f"noc_simulator/simulation_results/{time.strftime('%Y%m%d_%H%M%S')}"
+                cls._instance.metrics_folder = f"simpynoc/simulation_results/{time.strftime('%Y%m%d_%H%M%S')}"
             return cls._instance
     
 

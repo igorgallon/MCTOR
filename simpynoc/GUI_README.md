@@ -10,7 +10,7 @@ No additional dependencies needed! Tkinter comes with Python.
 
 1. **Start the Tkinter GUI:**
 ```bash
-cd noc_simulator/scr
+cd simpynoc/scr
 python gui.py
 ```
 
@@ -43,7 +43,7 @@ python main.py --config simulation_config.json
   "traffic_start": 0.0,
   "traffic_end": 0.15,
   "application_file": "embedded_app_graphs/mpeg4.app",
-  "mapping_file": "noc_simulator/mpeg4_mapping.map",
+  "mapping_file": "simpynoc/mpeg4_mapping.map",
   "routing_algorithms": ["XY", "NEGATIVE_FIRST"]
 }
 ```
@@ -96,7 +96,7 @@ python main.py
 | `traffic_start` | Starting traffic rate (%) | 0% |
 | `traffic_end` | Ending traffic rate (%) | 5% |
 | `application_file` | Path to .app file | embedded_app_graphs/mpeg4.app |
-| `mapping_file` | Path to .map file | noc_simulator/mpeg4_mapping.map |
+| `mapping_file` | Path to .map file | simpynoc/mpeg4_mapping.map |
 | `routing_algorithms` | List of routing algorithms to test | All 4 algorithms |
 
 ## Output
@@ -107,7 +107,7 @@ After simulation completes:
 - Configuration displayed on plots
 - Statistics summary in console
 
-All results are saved to `noc_simulator/simulation_results/<timestamp>/`
+All results are saved to `simpynoc/simulation_results/<timestamp>/`
 
 ## Keyboard Shortcuts
 

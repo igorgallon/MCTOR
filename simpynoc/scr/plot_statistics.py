@@ -8,7 +8,7 @@ from stats import plot_all_algorithms_comparison, calculate_metrics
 
 all_stats = {}
 
-root = "D:/Projects/MCTOR/noc_simulator/simulation_results/20260122_110917"
+root = "D:/Projects/MCTOR/simpynoc/simulation_results/20260122_110917"
 
 # maps = [
 #     # "vopd_onmap",
@@ -52,19 +52,19 @@ root = "D:/Projects/MCTOR/noc_simulator/simulation_results/20260122_110917"
 # plt.show()
 
 # folder = "20260217_235437"
-# metrics_folder = f"noc_simulator/simulation_results/{folder}_v3"
+# metrics_folder = f"simpynoc/simulation_results/{folder}_v3"
 # mappings = [
-#     f"noc_simulator/simulation_results/{folder}/stats_vopd_onmap.csv",
-#     f"noc_simulator/simulation_results/{folder}/stats_vopd_xyadb.csv",
-#     f"noc_simulator/simulation_results/{folder}/stats_vopd_mapgraph.csv",
-#     f"noc_simulator/simulation_results/{folder}/stats_vopd_nmap.csv",
-#     f"noc_simulator/simulation_results/{folder}/stats_vopd_lmap.csv",
-#     f"noc_simulator/simulation_results/{folder}/stats_vopd_rmap.csv",
-#     f"noc_simulator/simulation_results/{folder}/stats_vopd_ga.csv",
-#     f"noc_simulator/simulation_results/{folder}/stats_vopd_sa.csv",
-#     f"noc_simulator/simulation_results/{folder}/stats_vopd_castnet.csv",
-#     f"noc_simulator/simulation_results/{folder}/stats_vopd_ilp.csv",
-#     f"noc_simulator/simulation_results/{folder}/stats_vopd_mapgtom.csv"
+#     f"simpynoc/simulation_results/{folder}/stats_vopd_onmap.csv",
+#     f"simpynoc/simulation_results/{folder}/stats_vopd_xyadb.csv",
+#     f"simpynoc/simulation_results/{folder}/stats_vopd_mapgraph.csv",
+#     f"simpynoc/simulation_results/{folder}/stats_vopd_nmap.csv",
+#     f"simpynoc/simulation_results/{folder}/stats_vopd_lmap.csv",
+#     f"simpynoc/simulation_results/{folder}/stats_vopd_rmap.csv",
+#     f"simpynoc/simulation_results/{folder}/stats_vopd_ga.csv",
+#     f"simpynoc/simulation_results/{folder}/stats_vopd_sa.csv",
+#     f"simpynoc/simulation_results/{folder}/stats_vopd_castnet.csv",
+#     f"simpynoc/simulation_results/{folder}/stats_vopd_ilp.csv",
+#     f"simpynoc/simulation_results/{folder}/stats_vopd_mapgtom.csv"
 # ]
 # os.makedirs(metrics_folder, exist_ok=True)
 # for m in mappings:
@@ -75,26 +75,48 @@ root = "D:/Projects/MCTOR/noc_simulator/simulation_results/20260122_110917"
 
 # comparison_file = plot_all_algorithms_comparison(all_stats, metrics_folder=metrics_folder, context=None)
 
-routing_algorithms = ["XY", "NEGATIVE_FIRST", "WEST_FIRST", "NORTH_LEAST"]#, "ODD_EVEN"]
+routing_algorithms = ["XY", "NEGATIVE_FIRST", "WEST_FIRST", "NORTH_LAST"]#, "ODD_EVEN"]
 
-metrics_folder = "noc_simulator/simulation_results/20260122_110917"
+# metrics_folder = "simpynoc/simulation_results/20260122_110917" # Exp1
+# metrics_folder = "simpynoc/simulation_results/20260217_235437" # Exp2
+metrics_folder = "simpynoc/simulation_results/20260319_202625" # Exp2
 
-for r in routing_algorithms:
-    metrics_file = f"{metrics_folder}/metrics_{r}.csv"
-    
+mappings = {
+    "EV": f"{metrics_folder}/stats_EV.csv",
+    "DR": f"{metrics_folder}/stats_DR.csv",
+    "DS": f"{metrics_folder}/stats_DS.csv",
+    "HR": f"{metrics_folder}/stats_HR.csv",
+    "HS": f"{metrics_folder}/stats_HS.csv"
+    # "vopd_onmap": f"{metrics_folder}/stats_vopd_onmap.csv",
+    # "vopd_xyadb": f"{metrics_folder}/stats_vopd_xyadb.csv",
+    # "vopd_mapgraph": f"{metrics_folder}/stats_vopd_mapgraph.csv",
+    # "vopd_nmap": f"{metrics_folder}/stats_vopd_nmap.csv",
+    # "vopd_lmap": f"{metrics_folder}/stats_vopd_lmap.csv",
+    # "vopd_rmap": f"{metrics_folder}/stats_vopd_rmap.csv",
+    # "vopd_ga": f"{metrics_folder}/stats_vopd_ga.csv",
+    # "vopd_sa": f"{metrics_folder}/stats_vopd_sa.csv",
+    # "vopd_castnet": f"{metrics_folder}/stats_vopd_castnet.csv",
+    # "vopd_ilp": f"{metrics_folder}/stats_vopd_ilp.csv",
+    # "vopd_mapgtom": f"{metrics_folder}/stats_vopd_mapgtom.csv"
+}
+
+for name, metrics_file in mappings.items():
+    # metrics_file = f"{metrics_folder}/metrics_{r}.csv"
     # Analyze statistics (without displaying individual plots yet)
     try:
-        print(f"Analyzing statistics for {r} routing algorithm...")
-        all_stats[r] = calculate_metrics(metrics_file)  # Store for later comparison
+        print(f"Analyzing statistics for {name}...")
+        # all_stats[name] = calculate_metrics(metrics_file)  # Store for later comparison
+        
+        all_stats[name] = pd.read_csv(metrics_file)
         
     except Exception as e:
-        print(f"Error analyzing statistics for {r}: {e}")
+        print(f"Error analyzing statistics for {name}: {e}")
 
 # Create and display comparison plots after all simulations complete
 if all_stats:
     Logger().get_logger().info("Creating comparison plots for all routing algorithms...")
     try:
-        comparison_file = plot_all_algorithms_comparison(all_stats, metrics_folder+"_new")
+        comparison_file = plot_all_algorithms_comparison(all_stats, metrics_folder=f"{metrics_folder}_new", context=None)
         Logger().get_logger().info(f"Comparison plot saved to {comparison_file}")
         
         # Display summary table
@@ -117,7 +139,7 @@ if all_stats:
 # num_tasks, graph = load_application_graph("embedded_app_graphs/vopd.app")
 
 # Logger().get_logger().info("Loading tasks mapping...")
-# rows, columns, mapping = load_tasks_mapping("noc_simulator/maps/vopd_castnet.map")
+# rows, columns, mapping = load_tasks_mapping("simpynoc/maps/vopd_castnet.map")
 # mesh_size = (rows, columns)
 # context = {
 #     "simulation_steps": 10000,

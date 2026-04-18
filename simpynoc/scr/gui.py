@@ -211,7 +211,7 @@ class NoCSimulatorGUI:
             "traffic_start": float(self.traffic_start.get()) / 100,
             "traffic_end": float(self.traffic_end.get()) / 100,
             "application_file": f"embedded_app_graphs/{self.app_file.get()}",
-            "mapping_file": f"noc_simulator/{self.map_file.get()}",
+            "mapping_file": f"simpynoc/{self.map_file.get()}",
             "routing_algorithms": selected_algorithms
         }
         
