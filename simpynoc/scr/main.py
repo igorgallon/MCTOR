@@ -1,6 +1,6 @@
-import os
 import sys
 import argparse
+from pathlib import Path
 from clock import get_cycle
 from network import Network
 from logger import Logger
@@ -22,15 +22,16 @@ if __name__ == "__main__":
     args = parser.parse_args()
     
     # Load configuration
-    # cfg = load_config(args.config)
-    cfg = load_config("simpynoc/scr/simulation_config.json")
+    cfg = load_config(args.config)
     
     Logger().get_logger().info("Loading the Application Graph...")
-    # num_tasks, graph = load_application_graph(cfg["application_file"])
-    num_tasks, graph = load_application_graph("embedded_app_graphs/pcb_circle.app")
+    num_tasks, graph = load_application_graph(cfg["application_file"])
 
-    # Logger().get_logger().info("Loading tasks mapping...")
-    # rows, columns, mapping = load_tasks_mapping(cfg["mapping_file"])
+    Logger().get_logger().info("Loading tasks mapping...")
+    rows, columns, mapping = load_tasks_mapping(cfg["mapping_file"])
+
+    app_name = Path(cfg["application_file"]).stem
+    m_name = Path(cfg["mapping_file"]).stem
 
     # Merge the Application Graphs with the mapping
     # if not graph:
@@ -50,43 +51,22 @@ if __name__ == "__main__":
         "input_traffic_rate": get_linear_list(num_steps=cfg["traffic_steps"], init_pct=cfg["traffic_start"], end_pct=cfg["traffic_end"]),
         "mesh_size": cfg["mesh_size"],
         "max_flits_per_node": cfg["max_flits_per_node"],
-        "routing_algorithms": cfg["routing_algorithms"]
+        "routing_algorithms": cfg["routing_algorithms"],
+        "arbiter_strategy": cfg.get("arbiter_strategy", "ROUND_ROBIN"),
+        "topology": cfg.get("topology", "MESH"),
+        "injection_strategy": cfg.get("injection_strategy", "LINEAR")
     }
 
     all_stats = {}  # Store statistics for all routing algorithms
 
-    mappings = [
-        # "simpynoc/maps/vopd_onmap.map",
-        # "simpynoc/maps/vopd_xyadb.map",
-        # "simpynoc/maps/vopd_mapgraph.map",
-        # "simpynoc/maps/vopd_nmap.map",
-        # "simpynoc/maps/vopd_lmap.map",
-        # "simpynoc/maps/vopd_rmap.map",
-        # "simpynoc/maps/vopd_ga.map",
-        # "simpynoc/maps/vopd_sa.map",
-        # "simpynoc/maps/vopd_castnet.map",
-        # "simpynoc/maps/vopd_ilp.map",
-        # "simpynoc/maps/vopd_mapgtom.map"
-        "simpynoc/maps/engmaps/4_4/EV.map",
-        "simpynoc/maps/engmaps/4_4/DR.map",
-        "simpynoc/maps/engmaps/4_4/DS.map",
-        "simpynoc/maps/engmaps/4_4/HR.map",
-        "simpynoc/maps/engmaps/4_4/HS.map",
-    ]
-
-    for m in mappings:
-
-        Logger().get_logger().info("Loading tasks mapping...")
-        rows, columns, mapping = load_tasks_mapping(m)
-
-        r = "XY"
-        m_name = m.replace(".map", "").split("/")[-1]
-
+    for r in cfg["routing_algorithms"]:
+        Logger().get_logger().info(f"Running simulation with routing algorithm: {r}")
         Logger().get_logger().info("Initializing Mesh Network Simulation...")
         Logger().get_logger().info(f"Configuration: {context}")
-        Logger().get_logger().info(f"Using Mapping: {m_name}")
-        Logger().get_logger().info(f"Routing Algorithm: {r}")
-        mesh_network = Network(context=context, routing_algorithm=r)
+        Logger().get_logger().info(f"Using Mapping: {cfg['mapping_file']} with mesh size {context['mesh_size']}")
+        Logger().get_logger().info(f"Routing Algorithm: {cfg['routing_algorithms']}")
+        
+        mesh_network = Network(context=context, routing_algorithm=cfg['routing_algorithms'])
         mesh_network.start()
         
         Logger().get_logger().info("Simulation started! Injecting flits...")
@@ -113,15 +93,15 @@ if __name__ == "__main__":
         
         finally:
             mesh_network.stop()
-            metrics_file = MetricsCollector().save_logs_to_csv(suffix=m_name)
+            metrics_file = MetricsCollector().save_logs_to_csv(suffix=f"{app_name}_{r.lower()}")
             
             # Analyze statistics (without displaying individual plots yet)
             try:
-                Logger().get_logger().info(f"Analyzing statistics for {m_name} mapping...")
-                all_stats[m_name] = calculate_metrics(metrics_file)  # Store for later comparison
+                Logger().get_logger().info(f"Analyzing statistics for {app_name} mapping...")
+                all_stats[app_name] = calculate_metrics(metrics_file)  # Store for later comparison
                             
             except Exception as e:
-                Logger().get_logger().warning(f"Error analyzing statistics for {m_name}: {e}")
+                Logger().get_logger().warning(f"Error analyzing statistics for {app_name}: {e}")
             
             del mesh_network
     

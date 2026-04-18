@@ -172,7 +172,7 @@ def __plot_global_average_latency(ax, all_stats, colors, title_fontsize=14, is_i
     names = list(means.keys())
     values = [means[n] for n in names]
 
-    bars = ax.bar(range(len(names)), values, color=[colors.get(n) for n in names])
+    bars = ax.bar(range(len(names)), values, color=[colors.get(n, "#7f7f7f") for n in names])
 
     ax.set_title('Global Average Latency per Map', fontsize=title_fontsize, fontweight='bold')
     ax.set_xlabel('Map')

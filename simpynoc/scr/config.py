@@ -4,6 +4,7 @@ from pathlib import Path
 def load_config(config_file=None):
     """Load configuration from JSON file or use defaults"""
     
+    project_root = Path(__file__).resolve().parent.parent
     defaults = {
         "mesh_size": (6, 6),
         "simulation_steps": 500,
@@ -11,9 +12,12 @@ def load_config(config_file=None):
         "traffic_steps": 20,
         "traffic_start": 0.0,
         "traffic_end": 0.05,
-        "application_file": "embedded_app_graphs/mpeg4.app",
-        "mapping_file": "noc_simulator/mpeg4_mapping.map",
-        "routing_algorithms": ["XY", "NEGATIVE_FIRST", "WEST_FIRST", "NORTH_LEAST"]
+        "application_file": str(project_root / "embedded_app_graphs" / "mpeg4.app"),
+        "mapping_file": str(project_root / "simpynoc" / "maps" / "mpeg4_mapping.map"),
+        "routing_algorithms": ["XY", "NEGATIVE_FIRST", "WEST_FIRST", "NORTH_LEAST"],
+        "arbiter_strategy": "ROUND_ROBIN",
+        "topology": "MESH",
+        "injection_strategy": "LINEAR"
     }
     
     if config_file and Path(config_file).exists():
@@ -23,6 +27,8 @@ def load_config(config_file=None):
             # Convert tuple strings back to tuples if needed
             if isinstance(loaded.get("mesh_size"), list):
                 loaded["mesh_size"] = tuple(loaded["mesh_size"])
+            for key, value in defaults.items():
+                loaded.setdefault(key, value)
             return loaded
         except Exception as e:
             print(f"Warning: Could not load config file {config_file}: {e}")

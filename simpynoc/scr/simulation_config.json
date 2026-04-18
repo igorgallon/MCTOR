@@ -1,13 +1,22 @@
 {
-  "mesh_size": [4,4],
-  "simulation_steps": 10000,
-  "max_flits_per_node": 10000,
-  "traffic_steps": 50,
+  "mesh_size": [
+    6,
+    6
+  ],
+  "simulation_steps": 500,
+  "buffers_depth": 4,
+  "traffic_steps": 20,
   "traffic_start": 0.0,
-  "traffic_end": 0.5,
-  "application_file": "embedded_app_graphs/vopd.app",
-  "mapping_file": "simpynoc/maps/mpeg4_mapping.map",
+  "traffic_end": 0.05,
+  "application_file": "D:\\Projects\\MCTOR\\embedded_app_graphs\\vopd.app",
+  "mapping_file": "D:/Projects/MCTOR/simpynoc/maps/vopd_mapgraph.map",
   "routing_algorithms": [
-    "XY"
-  ]
+    "XY",
+    "NEGATIVE_FIRST",
+    "WEST_FIRST",
+    "NORTH_LEAST"
+  ],
+  "arbiter_strategy": "ROUND_ROBIN",
+  "topology": "MESH",
+  "injection_strategy": "LINEAR"
 }
