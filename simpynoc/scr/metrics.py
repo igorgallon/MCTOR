@@ -1,6 +1,7 @@
 from datetime import datetime
 import time
 import threading
+from pathlib import Path
 
 class MetricsCollector:
     _instance = None
@@ -11,7 +12,12 @@ class MetricsCollector:
             if cls._instance is None:
                 cls._instance = super().__new__(cls)
                 cls._instance.metrics_list = []
-                cls._instance.metrics_folder = f"simpynoc/simulation_results/{time.strftime('%Y%m%d_%H%M%S')}"
+                # Create a unique folder in 'simpynoc/simulations_result' directory
+                script_dir = Path(__file__).resolve().parent
+                project_root = script_dir.parent.parent
+                metrics_base = project_root / "simpynoc" / "simulation_results"
+                cls._instance.simulation_id = datetime.now().strftime('%Y%m%d_%H%M%S')
+                cls._instance.metrics_folder = str(metrics_base / cls._instance.simulation_id)
             return cls._instance
     
 

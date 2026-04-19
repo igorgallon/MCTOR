@@ -124,7 +124,7 @@ class Router():
         '''
         Main loop for the router thread.
         '''
-        
+        next_dir = None
         # Get the next direction from the arbiter
         direction = self.get_arbiter_direction()
         q = self.in_queues[direction]

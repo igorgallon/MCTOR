@@ -8,13 +8,13 @@
   "traffic_steps": 20,
   "traffic_start": 0.0,
   "traffic_end": 0.05,
-  "application_file": "D:\\Projects\\MCTOR\\embedded_app_graphs\\vopd.app",
-  "mapping_file": "D:/Projects/MCTOR/simpynoc/maps/vopd_mapgraph.map",
+  "application_file": "D:\\Projects\\MCTOR\\embedded_app_graphs\\mpeg4.app",
+  "mapping_file": "D:\\Projects\\MCTOR\\simpynoc\\maps\\mpeg4_mapping.map",
   "routing_algorithms": [
     "XY",
     "NEGATIVE_FIRST",
     "WEST_FIRST",
-    "NORTH_LEAST"
+    "NORTH_LAST"
   ],
   "arbiter_strategy": "ROUND_ROBIN",
   "topology": "MESH",

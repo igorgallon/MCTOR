@@ -9,7 +9,18 @@ class SimpyNoCGUI:
     def __init__(self, root):
         self.root = root
         self.root.title("SimpyNoC")
-        self.root.geometry("900x820")
+        
+        # Get desktop screen dimensions
+        screen_width = self.root.winfo_screenwidth()
+        screen_height = self.root.winfo_screenheight()
+        
+        # Set window to 90% of screen size with proper margins
+        window_width = int(screen_width * 0.9)
+        window_height = int(screen_height * 0.9)
+        x_pos = (screen_width - window_width) // 2
+        y_pos = (screen_height - window_height) // 2
+        
+        self.root.geometry(f"{window_width}x{window_height}+{x_pos}+{y_pos}")
         self.root.resizable(True, True)
 
         self.script_dir = Path(__file__).resolve().parent
@@ -24,9 +35,16 @@ class SimpyNoCGUI:
         style = ttk.Style()
         style.theme_use('clam')
         
+        # Create main container frame with proper grid layout
+        main_frame = ttk.Frame(self.root)
+        main_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
+        main_frame.grid_rowconfigure(0, weight=1)  # Notebook takes available space
+        main_frame.grid_rowconfigure(1, weight=0)  # Buttons stay at bottom
+        main_frame.grid_columnconfigure(0, weight=1)
+        
         # Create main notebook (tabs)
-        self.notebook = ttk.Notebook(root)
-        self.notebook.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
+        self.notebook = ttk.Notebook(main_frame)
+        self.notebook.grid(row=0, column=0, sticky="nsew", padx=0, pady=0)
         
         # Create tabs
         self.create_input_files_tab()
@@ -34,7 +52,7 @@ class SimpyNoCGUI:
         self.create_simulation_tab()
         
         # Create bottom button frame
-        self.create_button_frame()
+        self.create_button_frame(main_frame)
         
         # Load default config
         self.load_config_values(load_config())
@@ -114,7 +132,7 @@ class SimpyNoCGUI:
         routing_frame.pack(padx=20, pady=10, fill=tk.X)
 
         self.routing_vars = {}
-        algorithms = ["XY", "NEGATIVE_FIRST", "WEST_FIRST", "NORTH_LEAST"]
+        algorithms = ["XY", "NEGATIVE_FIRST", "WEST_FIRST", "NORTH_LAST"]
         for algo in algorithms:
             var = tk.BooleanVar(value=True)
             self.routing_vars[algo] = var
@@ -220,10 +238,10 @@ class SimpyNoCGUI:
 
         ttk.Button(frame, text="Refresh Summary", command=self.update_summary).pack(pady=5)
 
-    def create_button_frame(self):
+    def create_button_frame(self, parent):
         """Bottom button frame"""
-        btn_frame = ttk.Frame(self.root)
-        btn_frame.pack(side=tk.BOTTOM, fill=tk.X, padx=10, pady=10)
+        btn_frame = ttk.Frame(parent)
+        btn_frame.grid(row=1, column=0, sticky="ew", padx=0, pady=(10, 0))
         
         ttk.Button(btn_frame, text="💾 Save Configuration", command=self.save_config_action).pack(side=tk.LEFT, padx=5)
         ttk.Button(btn_frame, text="📖 Load Configuration", command=self.load_config_action).pack(side=tk.LEFT, padx=5)

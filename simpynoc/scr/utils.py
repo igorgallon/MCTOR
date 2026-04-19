@@ -236,7 +236,7 @@ ROUTING_ALGORITHMS = {
     "XY": __route_xy,
     "NEGATIVE_FIRST": __route_negative_first,
     "WEST_FIRST": __route_west_first,
-    "NORTH_LEAST": __route_north_last,
+    "NORTH_LAST": __route_north_last,
     "ODD_EVEN": __route_odd_even
 }
 

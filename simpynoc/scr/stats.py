@@ -88,8 +88,9 @@ def get_packet_loss(df):
 # Statistics Plotting Functions
 ###################################################
 
-AXIS_LABEL_FONT_SIZE = 12
-LEGEND_FONT_SIZE = 11
+AXIS_LABEL_FONT_SIZE = 10
+LEGEND_FONT_SIZE = 8
+FONTWEIGHT = 'normal'
 
 def _plot_throughput_comparison(ax, all_stats, colors, title_fontsize=12, is_individual=False):
     """Helper function to plot throughput comparison"""
@@ -97,9 +98,9 @@ def _plot_throughput_comparison(ax, all_stats, colors, title_fontsize=12, is_ind
         ax.plot(range(len(stats)), stats['throughput'], marker='o', linestyle='-', 
                linewidth=2, label=label, color=colors.get(label))
     if not is_individual:
-        ax.set_title('Throughput Comparison', fontsize=title_fontsize, fontweight='bold')
-    ax.set_xlabel('Traffic Rate Index', fontsize=AXIS_LABEL_FONT_SIZE, fontweight='bold')
-    ax.set_ylabel('Throughput (flits/cycle)', fontsize=AXIS_LABEL_FONT_SIZE, fontweight='bold')
+        ax.set_title('Throughput Comparison', fontsize=title_fontsize, fontweight=FONTWEIGHT)
+    ax.set_xlabel('Traffic Rate Index', fontsize=AXIS_LABEL_FONT_SIZE, fontweight=FONTWEIGHT)
+    ax.set_ylabel('Throughput (flits/cycle)', fontsize=AXIS_LABEL_FONT_SIZE, fontweight=FONTWEIGHT)
     ax.legend(fontsize=LEGEND_FONT_SIZE)
     ax.grid(True, alpha=0.3)
 
@@ -110,9 +111,9 @@ def _plot_latency_comparison(ax, all_stats, colors, title_fontsize=12, is_indivi
         ax.plot(range(len(stats)), stats['latency_mean'], marker='s', linestyle='-', 
                linewidth=2, label=label, color=colors.get(label))
     if not is_individual:
-        ax.set_title('Average Latency Comparison', fontsize=title_fontsize, fontweight='bold')
-    ax.set_xlabel('Traffic Rate Index', fontsize=AXIS_LABEL_FONT_SIZE, fontweight='bold')
-    ax.set_ylabel('Latency (cycles)', fontsize=AXIS_LABEL_FONT_SIZE, fontweight='bold')
+        ax.set_title('Average Latency Comparison', fontsize=title_fontsize, fontweight=FONTWEIGHT)
+    ax.set_xlabel('Traffic Rate Index', fontsize=AXIS_LABEL_FONT_SIZE, fontweight=FONTWEIGHT)
+    ax.set_ylabel('Latency (cycles)', fontsize=AXIS_LABEL_FONT_SIZE, fontweight=FONTWEIGHT)
     ax.legend(fontsize=LEGEND_FONT_SIZE)
     ax.grid(True, alpha=0.3)
 
@@ -123,9 +124,9 @@ def _plot_extra_delay_comparison(ax, all_stats, colors, title_fontsize=12, is_in
         ax.plot(range(len(stats)), stats['extra_delay'], marker='^', linestyle='-', 
                linewidth=2, label=label, color=colors.get(label))
     if not is_individual:
-        ax.set_title('Extra Delay Comparison', fontsize=title_fontsize, fontweight='bold')
-    ax.set_xlabel('Traffic Rate Index', fontsize=AXIS_LABEL_FONT_SIZE, fontweight='bold')
-    ax.set_ylabel('Extra Delay (cycles)', fontsize=AXIS_LABEL_FONT_SIZE, fontweight='bold')
+        ax.set_title('Extra Delay Comparison', fontsize=title_fontsize, fontweight=FONTWEIGHT)
+    ax.set_xlabel('Traffic Rate Index', fontsize=AXIS_LABEL_FONT_SIZE, fontweight=FONTWEIGHT)
+    ax.set_ylabel('Extra Delay (cycles)', fontsize=AXIS_LABEL_FONT_SIZE, fontweight=FONTWEIGHT)
     ax.legend(fontsize=LEGEND_FONT_SIZE)
     ax.grid(True, alpha=0.3)
 
@@ -140,9 +141,9 @@ def _plot_packet_loss_comparison(ax, all_stats, colors, title_fontsize=12, is_in
         ax.plot(range(len(stats)), p(range(len(stats))), linestyle='-', linewidth=3, 
                label=label, color=colors.get(label))
     if not is_individual:
-        ax.set_title('Packet Loss Comparison', fontsize=title_fontsize, fontweight='bold')
-    ax.set_xlabel('Traffic Rate Index', fontsize=AXIS_LABEL_FONT_SIZE, fontweight='bold')
-    ax.set_ylabel('Lost Packets', fontsize=AXIS_LABEL_FONT_SIZE, fontweight='bold')
+        ax.set_title('Packet Loss Comparison', fontsize=title_fontsize, fontweight=FONTWEIGHT)
+    ax.set_xlabel('Traffic Rate Index', fontsize=AXIS_LABEL_FONT_SIZE, fontweight=FONTWEIGHT)
+    ax.set_ylabel('Lost Packets', fontsize=AXIS_LABEL_FONT_SIZE, fontweight=FONTWEIGHT)
     ax.legend(fontsize=LEGEND_FONT_SIZE)
     ax.grid(True, alpha=0.3)
 
@@ -249,12 +250,26 @@ def save_execution_parameters(context, metrics_folder):
     return params_file
 
 
-def plot_all_algorithms_comparison(all_stats, metrics_folder, context=None):
+def plot_all_algorithms_comparison(all_stats, metrics_folder, simulation_id, context=None):
     """
     Create comparison plots for all routing algorithms.
     all_stats: dict with routing algorithm names as keys and stats dataframes as values
     context: simulation configuration dictionary
     """
+    import tkinter as tk
+    
+    # Get screen dimensions and calculate adaptive figure size
+    root = tk.Tk()
+    root.withdraw()
+    screen_width = root.winfo_screenwidth()
+    screen_height = root.winfo_screenheight()
+    root.destroy()
+    
+    # Convert pixels to inches (standard DPI is 100)
+    dpi = 100
+    fig_width = (screen_width * 0.85) / dpi
+    fig_height = (screen_height * 0.85) / dpi
+    
     colors = {
         'XY': '#1f77b4',
         'NEGATIVE_FIRST': '#ff7f0e',
@@ -278,38 +293,26 @@ def plot_all_algorithms_comparison(all_stats, metrics_folder, context=None):
         'HS': '#9467bd'
     }
 
-    # Create combined 2x2 comparison plot
-    fig, axes = plt.subplots(2, 2, figsize=(16, 12))
-    fig.suptitle('Simulation Statistics - All Routing Algorithms Comparison', fontsize=16, fontweight='bold')
-    
+    # Create combined 2x2 comparison plot with adaptive size
+    fig, axes = plt.subplots(2, 2, figsize=(fig_width, fig_height))
+    fig.suptitle('Simulation Statistics - All Routing Algorithms Comparison', fontsize=12, fontweight='bold')    
+    # Set window title
+    fig.canvas.manager.set_window_title(f"NoC Simulation Results ({simulation_id})")    
     # Add configuration text box
-    if context:
-        save_execution_parameters(context, metrics_folder)
-        config_text = "Configuration:\n"
-        config_text += f"  Mesh Size: {context.get('mesh_size', 'N/A')}\n"
-        config_text += f"  Simulation Steps: {context.get('simulation_steps', 'N/A')}\n"
-        config_text += f"  Max Flits/Node: {context.get('max_flits_per_node', 'N/A')}\n"
-        config_text += f"  Traffic Range: {context.get('input_traffic_rate', ['N/A'])[0]:.2%} - {context.get('input_traffic_rate', ['N/A'])[-1]:.2%}"
+    # if context:
+    #     save_execution_parameters(context, metrics_folder)
+    #     config_text = "Configuration:\n"
+    #     config_text += f"  Mesh Size: {context.get('mesh_size', 'N/A')}\n"
+    #     config_text += f"  Simulation Steps: {context.get('simulation_steps', 'N/A')}\n"
+    #     config_text += f"  Max Flits/Node: {context.get('max_flits_per_node', 'N/A')}\n"
+    #     config_text += f"  Traffic Range: {context.get('input_traffic_rate', ['N/A'])[0]:.2%} - {context.get('input_traffic_rate', ['N/A'])[-1]:.2%}"
         
-        fig.text(0.99, 0.01, config_text, fontsize=9, ha='right', va='bottom',
-                bbox=dict(boxstyle='round', facecolor='wheat', alpha=0.3),
-                family='monospace')
-    
-    # Plot to combined figure
-    _plot_throughput_comparison(axes[0, 0], all_stats, colors, title_fontsize=12)
-    _plot_latency_comparison(axes[0, 1], all_stats, colors, title_fontsize=12)
-    _plot_extra_delay_comparison(axes[1, 0], all_stats, colors, title_fontsize=12)
-    _plot_packet_loss_comparison(axes[1, 1], all_stats, colors, title_fontsize=12)
-    
-    plt.tight_layout()
-    
+    #     fig.text(0.99, 0.01, config_text, fontsize=9, ha='right', va='bottom',
+    #             bbox=dict(boxstyle='round', facecolor='wheat', alpha=0.3),
+    #             family='monospace')
+        
     if not os.path.exists(metrics_folder):
         os.makedirs(metrics_folder)
-    
-    # Save combined comparison plot
-    comparison_file = f"{metrics_folder}/comparison_all_algorithms.png"
-    fig.savefig(comparison_file, dpi=200, bbox_inches='tight')
-    plt.close(fig)
     
     # Save individual plots
     fig_throughput, ax_throughput = plt.subplots(figsize=(12, 7))
@@ -348,9 +351,7 @@ def plot_all_algorithms_comparison(all_stats, metrics_folder, context=None):
     fig_global_avg_throughput.savefig(f"{metrics_folder}/global_average_throughput_per_map.png", dpi=200, bbox_inches='tight')
     plt.close(fig_global_avg_throughput)
 
-
     # Print a table with mean latency and throughput for each map
-    fig_table, ax_table = plt.subplots(figsize=(10, len(all_stats) * 0.5 + 1))
     table_data = []
     for label, stats in all_stats.items():
         if isinstance(stats, pd.DataFrame):
@@ -360,7 +361,7 @@ def plot_all_algorithms_comparison(all_stats, metrics_folder, context=None):
             std_throughput = stats['throughput'].std() if 'throughput' in stats.columns else float('nan')
             table_data.append([label.replace('vopd_', ''), f"{mean_latency:.2f}", f"{std_latency:.2f}", f"{mean_throughput:.4f}", f"{std_throughput:.4f}"])
     table_data.sort(key=lambda x: x[1])  # Sort by mean latency
-    # Convert to a Pandas DataGFrame for better formatting
+    # Convert to a Pandas DataFrame for better formatting
     df_table = pd.DataFrame(table_data, columns=['Map', 'Mean Latency (cycles)', 'Latency Std Dev', 'Mean Throughput (flits/cycle)', 'Throughput Std Dev'])
     df_table.set_index('Map', inplace=True)
     # Plot boxplot of latency and throughput
@@ -378,6 +379,17 @@ def plot_all_algorithms_comparison(all_stats, metrics_folder, context=None):
     plt.close(fig_box)
     # Export to CSV file
     df_table.to_csv(f"{metrics_folder}/mean_latency_throughput_table.csv")
+    
+    # Plot to combined figure
+    _plot_throughput_comparison(axes[0, 0], all_stats, colors, title_fontsize=12)
+    _plot_latency_comparison(axes[0, 1], all_stats, colors, title_fontsize=12)
+    _plot_extra_delay_comparison(axes[1, 0], all_stats, colors, title_fontsize=12)
+    _plot_packet_loss_comparison(axes[1, 1], all_stats, colors, title_fontsize=12)
+    # Save combined comparison plot
+    comparison_file = f"{metrics_folder}/comparison_all_algorithms.png"
+    fig.savefig(comparison_file, dpi=200, bbox_inches='tight')
+    plt.tight_layout()
+    plt.show()
     return comparison_file
 
 

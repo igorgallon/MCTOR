@@ -64,9 +64,9 @@ if __name__ == "__main__":
         Logger().get_logger().info("Initializing Mesh Network Simulation...")
         Logger().get_logger().info(f"Configuration: {context}")
         Logger().get_logger().info(f"Using Mapping: {cfg['mapping_file']} with mesh size {context['mesh_size']}")
-        Logger().get_logger().info(f"Routing Algorithm: {cfg['routing_algorithms']}")
+        Logger().get_logger().info(f"Routing Algorithm: {r}")
         
-        mesh_network = Network(context=context, routing_algorithm=cfg['routing_algorithms'])
+        mesh_network = Network(context=context, routing_algorithm=r)
         mesh_network.start()
         
         Logger().get_logger().info("Simulation started! Injecting flits...")
@@ -98,7 +98,7 @@ if __name__ == "__main__":
             # Analyze statistics (without displaying individual plots yet)
             try:
                 Logger().get_logger().info(f"Analyzing statistics for {app_name} mapping...")
-                all_stats[app_name] = calculate_metrics(metrics_file)  # Store for later comparison
+                all_stats[r] = calculate_metrics(metrics_file)  # Store for later comparison
                             
             except Exception as e:
                 Logger().get_logger().warning(f"Error analyzing statistics for {app_name}: {e}")
@@ -109,7 +109,7 @@ if __name__ == "__main__":
     if all_stats:
         Logger().get_logger().info("Creating comparison plots for all routing algorithms...")
         try:
-            comparison_file = plot_all_algorithms_comparison(all_stats, MetricsCollector().get_metrics_folder(), context)
+            comparison_file = plot_all_algorithms_comparison(all_stats, MetricsCollector().get_metrics_folder(), MetricsCollector().simulation_id, context)
             Logger().get_logger().info(f"Comparison plot saved to {comparison_file}")
             
             # Display summary table
@@ -124,8 +124,6 @@ if __name__ == "__main__":
                 Logger().get_logger().info(f"  Packet Loss:  {stats['packet_loss'].sum():.0f} total")
             Logger().get_logger().info(f"{'='*80}\n")
             
-            # Show all comparison plots
-            plt.show()
         except Exception as e:
             Logger().get_logger().warning(f"Error creating comparison plots: {e}")
     sys.exit(0)
