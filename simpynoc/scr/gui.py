@@ -4,6 +4,15 @@ import tkinter as tk
 from tkinter import ttk, messagebox, filedialog
 from pathlib import Path
 from config import load_config, save_config
+from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+import matplotlib.pyplot as plt
+from PIL import Image, ImageTk
+import matplotlib.image as mpimg
+
+INPUT_TAB_NAME = "📁 Input Files"
+PARAMETERS_TAB_NAME = "🛠️ NoC Parameters"
+SIMULATION_TAB_NAME = "⚙️ Simulation"
+RESULTS_TAB_NAME = "📊 Results"
 
 class SimpyNoCGUI:
     def __init__(self, root):
@@ -21,6 +30,7 @@ class SimpyNoCGUI:
         y_pos = (screen_height - window_height) // 2
         
         self.root.geometry(f"{window_width}x{window_height}+{x_pos}+{y_pos}")
+        self.root.state('zoomed')  # Start maximized
         self.root.resizable(True, True)
 
         self.script_dir = Path(__file__).resolve().parent
@@ -50,6 +60,7 @@ class SimpyNoCGUI:
         self.create_input_files_tab()
         self.create_noc_parameters_tab()
         self.create_simulation_tab()
+        self.create_results_tab()        
         
         # Create bottom button frame
         self.create_button_frame(main_frame)
@@ -60,7 +71,7 @@ class SimpyNoCGUI:
     def create_input_files_tab(self):
         """Input Files tab"""
         frame = ttk.Frame(self.notebook)
-        self.notebook.add(frame, text="📁 Input Files")
+        self.notebook.add(frame, text=INPUT_TAB_NAME)
 
         ttk.Label(frame, text="Input Files", font=('Arial', 12, 'bold')).pack(pady=10)
 
@@ -124,7 +135,7 @@ class SimpyNoCGUI:
     def create_noc_parameters_tab(self):
         """NoC parameters tab"""
         frame = ttk.Frame(self.notebook)
-        self.notebook.add(frame, text="🛠️ NoC Parameters")
+        self.notebook.add(frame, text=PARAMETERS_TAB_NAME)
 
         ttk.Label(frame, text="NoC Parameters", font=('Arial', 12, 'bold')).pack(pady=10)
 
@@ -180,7 +191,7 @@ class SimpyNoCGUI:
     def create_simulation_tab(self):
         """Simulation configuration tab"""
         frame = ttk.Frame(self.notebook)
-        self.notebook.add(frame, text="🚀 Simulation")
+        self.notebook.add(frame, text=SIMULATION_TAB_NAME)
 
         ttk.Label(frame, text="Simulation Settings", font=('Arial', 12, 'bold')).pack(pady=10)
 
@@ -238,6 +249,26 @@ class SimpyNoCGUI:
 
         ttk.Button(frame, text="Refresh Summary", command=self.update_summary).pack(pady=5)
 
+    def create_results_tab(self):
+        """Results tab for displaying simulation statistics"""
+        frame = ttk.Frame(self.notebook)
+        tab_id = self.notebook.add(frame, text=RESULTS_TAB_NAME)
+
+        # Frame for the matplotlib figure
+        self.results_frame = ttk.LabelFrame(frame, text="Statistics Comparison")
+        self.results_frame.pack(padx=0, pady=10, fill=tk.BOTH, expand=True)
+
+        # Placeholder text when no results are available
+        self.results_placeholder = ttk.Label(self.results_frame, text="No simulation results available.\nRun a simulation to view statistics.", font=('Arial', 10))
+        self.results_placeholder.pack(expand=True)
+
+        # Bind resize event for dynamic plot resizing
+        self._results_resize_after_id = None
+        self.results_frame.bind("<Configure>", self._on_results_frame_resize)
+
+        # Button to refresh results
+        ttk.Button(frame, text="🔄 Refresh Results", command=self.refresh_results).pack(pady=5)
+
     def create_button_frame(self, parent):
         """Bottom button frame"""
         btn_frame = ttk.Frame(parent)
@@ -291,6 +322,7 @@ class SimpyNoCGUI:
             "mesh_size": [mesh_rows, mesh_cols],
             "simulation_steps": sim_steps,
             "buffers_depth": buffers_depth,
+            "max_flits_per_node": 1000,  # Add missing key required by main.py
             "traffic_steps": traffic_steps,
             "traffic_start": traffic_start,
             "traffic_end": traffic_end,
@@ -490,6 +522,108 @@ class SimpyNoCGUI:
         
         self.update_summary()
     
+    def refresh_results(self):
+        """Refresh and display simulation results in the results tab"""
+        try:
+            # Look for the most recent simulation results
+            metrics_base = self.project_root / "simpynoc" / "simulation_results"
+            if not metrics_base.exists():
+                messagebox.showinfo("No Results", "No simulation results found. Run a simulation first.")
+                return
+
+            # Find the most recent simulation folder
+            sim_folders = [f for f in metrics_base.iterdir() if f.is_dir()]
+            if not sim_folders:
+                messagebox.showinfo("No Results", "No simulation results found. Run a simulation first.")
+                return
+
+            latest_sim = max(sim_folders, key=lambda x: x.stat().st_mtime)
+
+            # Try to load comparison plot first, then individual plots
+            comparison_file = latest_sim / "comparison_all_algorithms.png"
+            plot_files = [
+                latest_sim / "throughput_comparison.png",
+                latest_sim / "latency_comparison.png",
+                latest_sim / "extra_delay_comparison.png",
+                latest_sim / "packet_loss_comparison.png"
+            ]
+
+            display_file = None
+            if comparison_file.exists():
+                display_file = comparison_file
+            else:
+                # Use first available individual plot
+                for plot_file in plot_files:
+                    if plot_file.exists():
+                        display_file = plot_file
+                        break
+
+            if not display_file:
+                messagebox.showinfo("No Results", f"No plot files found in {latest_sim.name}. The simulation may still be running.")
+                return
+
+            self._display_results_plot(display_file, latest_sim)
+
+        except Exception as e:
+            messagebox.showerror("Error", f"Failed to load results: {e}")
+
+    def _display_results_plot(self, display_file, latest_sim):
+        # Clear existing content
+        for widget in self.results_frame.winfo_children():
+            widget.destroy()
+
+        # Load and display the image
+        img = mpimg.imread(str(display_file))
+
+        # Dynamically determine figure size based on frame size
+        self.results_frame.update_idletasks()
+        frame_width = self.results_frame.winfo_width() or 1200
+        frame_height = self.results_frame.winfo_height() or 800
+        dpi = 100
+        fig_width = frame_width / dpi
+        fig_height = frame_height / dpi
+
+        # Create matplotlib figure and display
+        fig = plt.Figure(figsize=(fig_width, fig_height), dpi=dpi)
+        ax = fig.add_subplot(111)
+        ax.imshow(img)
+        # Resize image to fit the frame while maintaining aspect ratio
+        ax.set_aspect('auto')
+
+        ax.axis('off')
+
+        # Embed in tkinter
+        canvas = FigureCanvasTkAgg(fig, master=self.results_frame)
+        canvas.draw()
+        widget = canvas.get_tk_widget()
+        widget.pack(fill=tk.BOTH, expand=True)
+        widget.configure(width=frame_width, height=frame_height)
+        fig.set_size_inches(fig_width, fig_height, forward=True)
+        plt.close(fig)
+
+        # Add navigation buttons
+        button_frame = ttk.Frame(self.results_frame)
+        button_frame.pack(fill=tk.X, pady=5)
+
+        ttk.Button(button_frame, text="📂 Open Results Folder", 
+              command=lambda: subprocess.run(['explorer', str(latest_sim)])).pack(side=tk.LEFT, padx=5)
+        ttk.Button(button_frame, text="🔄 Refresh", command=self.refresh_results).pack(side=tk.RIGHT, padx=5)
+
+        # Save for resize event
+        self._last_display_file = display_file
+        self._last_latest_sim = latest_sim
+
+    def _on_results_frame_resize(self, event):
+        # Debounce rapid resize events
+        if self._results_resize_after_id:
+            self.results_frame.after_cancel(self._results_resize_after_id)
+        self._results_resize_after_id = self.results_frame.after(150, self._redraw_results_plot)
+
+    def _redraw_results_plot(self):
+        # Only redraw if a plot is currently displayed
+        if hasattr(self, '_last_display_file') and hasattr(self, '_last_latest_sim'):
+            self._display_results_plot(self._last_display_file, self._last_latest_sim)
+    
     def run_simulation(self):
         """Run simulation with current configuration"""
         config = self.get_config()
@@ -501,19 +635,72 @@ class SimpyNoCGUI:
 
         if save_config(config, self.last_config_file):
             try:
-                subprocess.Popen(
+                # Update status in results tab
+                self._update_simulation_status("Running simulation...")
+                
+                # Run simulation in background
+                self.sim_process = subprocess.Popen(
                     [sys.executable, str(self.script_dir / "main.py"), "--config", str(self.last_config_file)],
                     cwd=str(self.script_dir)
                 )
-                messagebox.showinfo(
-                    "Running Simulation",
-                    f"Simulation launched with {Path(self.last_config_file).name}.\nCheck the terminal for output."
-                )
+                
+                # messagebox.showinfo(
+                #     "Running Simulation",
+                #     f"Simulation launched with {Path(self.last_config_file).name}.\nCheck the Results tab for status updates."
+                # )
+                
+                self.select_tab_by_name(RESULTS_TAB_NAME)
+
+                # Start polling for completion
+                self._poll_simulation_completion()
+                
             except Exception as e:
+                self._update_simulation_status("Simulation failed to start")
                 messagebox.showerror("Error", f"Failed to run simulation: {e}")
         else:
             messagebox.showerror("Error", "Failed to save configuration before running")
 
+    def _update_simulation_status(self, status_text):
+        """Update the simulation status in the results tab"""
+        # Clear existing content
+        for widget in self.results_frame.winfo_children():
+            widget.destroy()
+        
+        # Show status message
+        status_label = ttk.Label(self.results_frame, text=status_text, font=('Arial', 12))
+        status_label.pack(expand=True)
+        
+        # Force GUI update
+        self.root.update_idletasks()
+
+    def _poll_simulation_completion(self):
+        """Poll for simulation completion and update results when done"""
+        if hasattr(self, 'sim_process') and self.sim_process.poll() is None:
+            # Still running, check again in 1 second
+            self.root.after(1000, self._poll_simulation_completion)
+        else:
+            # Process completed or failed
+            if hasattr(self, 'sim_process'):
+                return_code = self.sim_process.poll()
+                if return_code == 0:
+                    self._update_simulation_status("Simulation completed! Loading results...")
+                    # Wait a bit for file system to settle, then refresh
+                    self.root.after(1000, self.refresh_results)
+                else:
+                    # Get error output
+                    stdout, stderr = self.sim_process.communicate()
+                    error_msg = stderr.decode() if stderr else "Unknown error"
+                    self._update_simulation_status(f"Simulation failed: {error_msg}")
+                    messagebox.showerror("Simulation Error", f"Simulation failed with return code {return_code}:\n{error_msg}")
+            else:
+                self._update_simulation_status("Simulation status unknown")
+
+
+    def select_tab_by_name(self, tab_text):
+        for tab_id in self.notebook.tabs():
+            if self.notebook.tab(tab_id, 'text') == tab_text:
+                self.notebook.select(tab_id)
+                break
 
 if __name__ == "__main__":
     root = tk.Tk()

@@ -267,8 +267,8 @@ def plot_all_algorithms_comparison(all_stats, metrics_folder, simulation_id, con
     
     # Convert pixels to inches (standard DPI is 100)
     dpi = 100
-    fig_width = (screen_width * 0.85) / dpi
-    fig_height = (screen_height * 0.85) / dpi
+    fig_width = screen_width / dpi
+    fig_height = screen_height / dpi
     
     colors = {
         'XY': '#1f77b4',
@@ -292,24 +292,6 @@ def plot_all_algorithms_comparison(all_stats, metrics_folder, simulation_id, con
         'HR': '#d62728',
         'HS': '#9467bd'
     }
-
-    # Create combined 2x2 comparison plot with adaptive size
-    fig, axes = plt.subplots(2, 2, figsize=(fig_width, fig_height))
-    fig.suptitle('Simulation Statistics - All Routing Algorithms Comparison', fontsize=12, fontweight='bold')    
-    # Set window title
-    fig.canvas.manager.set_window_title(f"NoC Simulation Results ({simulation_id})")    
-    # Add configuration text box
-    # if context:
-    #     save_execution_parameters(context, metrics_folder)
-    #     config_text = "Configuration:\n"
-    #     config_text += f"  Mesh Size: {context.get('mesh_size', 'N/A')}\n"
-    #     config_text += f"  Simulation Steps: {context.get('simulation_steps', 'N/A')}\n"
-    #     config_text += f"  Max Flits/Node: {context.get('max_flits_per_node', 'N/A')}\n"
-    #     config_text += f"  Traffic Range: {context.get('input_traffic_rate', ['N/A'])[0]:.2%} - {context.get('input_traffic_rate', ['N/A'])[-1]:.2%}"
-        
-    #     fig.text(0.99, 0.01, config_text, fontsize=9, ha='right', va='bottom',
-    #             bbox=dict(boxstyle='round', facecolor='wheat', alpha=0.3),
-    #             family='monospace')
         
     if not os.path.exists(metrics_folder):
         os.makedirs(metrics_folder)
@@ -380,17 +362,21 @@ def plot_all_algorithms_comparison(all_stats, metrics_folder, simulation_id, con
     # Export to CSV file
     df_table.to_csv(f"{metrics_folder}/mean_latency_throughput_table.csv")
     
-    # Plot to combined figure
-    _plot_throughput_comparison(axes[0, 0], all_stats, colors, title_fontsize=12)
-    _plot_latency_comparison(axes[0, 1], all_stats, colors, title_fontsize=12)
-    _plot_extra_delay_comparison(axes[1, 0], all_stats, colors, title_fontsize=12)
-    _plot_packet_loss_comparison(axes[1, 1], all_stats, colors, title_fontsize=12)
+    # Create combined 2x2 comparison plot with adaptive size
+    fig, axes = plt.subplots(2, 2, figsize=(fig_width, fig_height), dpi=dpi)
+    # Plot to combined figure with smaller title font to reduce overlap
+    _plot_throughput_comparison(axes[0, 0], all_stats, colors, title_fontsize=10)
+    _plot_latency_comparison(axes[0, 1], all_stats, colors, title_fontsize=10)
+    _plot_extra_delay_comparison(axes[1, 0], all_stats, colors, title_fontsize=10)
+    _plot_packet_loss_comparison(axes[1, 1], all_stats, colors, title_fontsize=10)
+    # Use tight_layout to prevent title/label overlap
+    plt.tight_layout()
     # Save combined comparison plot
     comparison_file = f"{metrics_folder}/comparison_all_algorithms.png"
-    fig.savefig(comparison_file, dpi=200, bbox_inches='tight')
-    plt.tight_layout()
-    plt.show()
-    return comparison_file
+    fig.savefig(comparison_file, dpi=300, bbox_inches='tight')
+    plt.close(fig)
+    # Return the figure instead of showing it
+    return fig, comparison_file
 
 
 def calculate_metrics(metrics_file: str):

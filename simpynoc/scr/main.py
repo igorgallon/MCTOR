@@ -109,7 +109,7 @@ if __name__ == "__main__":
     if all_stats:
         Logger().get_logger().info("Creating comparison plots for all routing algorithms...")
         try:
-            comparison_file = plot_all_algorithms_comparison(all_stats, MetricsCollector().get_metrics_folder(), MetricsCollector().simulation_id, context)
+            fig, comparison_file = plot_all_algorithms_comparison(all_stats, MetricsCollector().get_metrics_folder(), MetricsCollector().simulation_id, context)
             Logger().get_logger().info(f"Comparison plot saved to {comparison_file}")
             
             # Display summary table

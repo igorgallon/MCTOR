@@ -105,10 +105,11 @@ for name, metrics_file in mappings.items():
     # Analyze statistics (without displaying individual plots yet)
     try:
         print(f"Analyzing statistics for {name}...")
-        # all_stats[name] = calculate_metrics(metrics_file)  # Store for later comparison
-        
-        all_stats[name] = pd.read_csv(metrics_file)
-        
+        df = pd.read_csv(metrics_file)
+        if isinstance(df, pd.DataFrame):
+            all_stats[name] = df
+        else:
+            print(f"Warning: {name} did not return a DataFrame, skipping.")
     except Exception as e:
         print(f"Error analyzing statistics for {name}: {e}")
 
