@@ -635,25 +635,19 @@ class SimpyNoCGUI:
 
         if save_config(config, self.last_config_file):
             try:
-                # Update status in results tab
+                # Always switch to Results tab and reset status immediately
+                self.select_tab_by_name(RESULTS_TAB_NAME)
                 self._update_simulation_status("Running simulation...")
-                
+
                 # Run simulation in background
                 self.sim_process = subprocess.Popen(
                     [sys.executable, str(self.script_dir / "main.py"), "--config", str(self.last_config_file)],
                     cwd=str(self.script_dir)
                 )
-                
-                # messagebox.showinfo(
-                #     "Running Simulation",
-                #     f"Simulation launched with {Path(self.last_config_file).name}.\nCheck the Results tab for status updates."
-                # )
-                
-                self.select_tab_by_name(RESULTS_TAB_NAME)
 
                 # Start polling for completion
                 self._poll_simulation_completion()
-                
+
             except Exception as e:
                 self._update_simulation_status("Simulation failed to start")
                 messagebox.showerror("Error", f"Failed to run simulation: {e}")
