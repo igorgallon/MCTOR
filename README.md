@@ -1,17 +1,4 @@
-1. Descompactar .zip
-2. Abrir pasta MCTOR no Matlab
-3. Executar comando mctor_gui() a partir da pasta MCTOR/
-
-Aba "Single"
-É possível executar de maneira convencional, carregando um arquivo .tgff que contém os grafos das aplicações
-
-Arquivos TGFF
-Clicando no botão "Load TGFF file", abrirá uma janela para selecionar o arquivo TGFF. Há exemplos de arquivos no caminho: MCTOR/tgff/. O arquivo "simple1" contém os grafos para 1 aplicação. O arquivo "simple2" contém os grafos para 2 aplicações.
-Para gerar um arquivo TGFF contendo N aplicações, basta criar/modificar um arquivo .tgffopt (veja MCTOR/tgff/tgff_v3_1/examples/simple.tgffopt) e alterar o parâmetro "tg_cnt". Depois disso, execute na linha de comando MCTOR/tgff/tgff_v3_1/tgff3_1.exe <caminho para o arquivo .tgffopt>. Esse comando irá gerar um arquivo .tgff, que pode ser aberto pela interface GUI através do botão "Load TGFF file"
-
-Aba "Batch"
-Aqui é possível realizar N chamadas ao PlatEMO para combinações de parâmetros, a partir dos grafos carregados na aba "Single". Ao clicar no botão "RUN", uma tabela contendo as combinações de parâmetros é exibida e o usuário pode acompanhar o status da execução pela coluna "Status". Uma vez que todos os testes encerraram, basta clicar no botão "Export results" e os resultados da execução batch atual são salvos por meio de um arquivo .mat na pasta MCTOR/batch/
-
-Versões utilizadas:
-MATLAB R2023a
-PlatEMO v4.1
+1. Extract the `.zip` file
+2. Open the `MCTOR` folder in MATLAB
+3. Execute the command `mctor_gui()` from the `MCTOR/` folder
+4. After extracting the `.zip` file, open the `MCTOR` folder in MATLAB and run the command `mctor_gui()` from the `MCTOR/` folder. In the **Single** tab, it is possible to run the tool in the conventional way by loading a `.tgff` file containing the application graphs. To load a TGFF file, click the **Load TGFF file** button; a window will open for selecting the desired file. Example files are available in the path `MCTOR/tgff/`. The file `simple1` contains the graphs for one application, while the file `simple2` contains the graphs for two applications. To generate a TGFF file containing `N` applications, create or modify a `.tgffopt` file, such as the example available at `MCTOR/tgff/tgff_v3_1/examples/simple.tgffopt`, and change the `tg_cnt` parameter. Then, run the command `MCTOR/tgff/tgff_v3_1/tgff3_1.exe <path to the .tgffopt file>` from the command line. This command will generate a `.tgff` file, which can be opened through the GUI using the **Load TGFF file** button. In the **Batch** tab, it is possible to perform `N` calls to PlatEMO for different parameter combinations, using the graphs previously loaded in the **Single** tab. When the **RUN** button is clicked, a table containing the parameter combinations is displayed, and the user can monitor the execution status through the **Status** column. Once all tests have finished, click the **Export results** button, and the results of the current batch execution will be saved as a `.mat` file in the `MCTOR/batch/` folder. The versions used were MATLAB R2023a and PlatEMO v4.1.
